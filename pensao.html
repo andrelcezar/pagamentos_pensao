@@ -3,68 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão Pro - Controle de Pensão</title>
+    <title>GLCTech - Gestão Blindada v3.0</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
-        :root { --primary: #2563eb; --success: #16a34a; --danger: #dc2626; --bg: #f8fafc; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); color: #1e293b; margin: 0; padding: 20px; }
-        .container { max-width: 900px; margin: auto; }
-        
-        .card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .grid-header { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        
-        h1, h2 { margin: 0 0 15px 0; font-size: 1.25rem; }
-        .stat-val { font-size: 1.8rem; font-weight: 700; color: var(--primary); }
-        .stat-label { font-size: 0.875rem; color: #64748b; }
-
-        .calc-box { background: #eff6ff; border: 1px solid #dbeafe; border-radius: 8px; padding: 16px; }
-        input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; width: 100px; }
-        button { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; }
-        button:hover { opacity: 0.9; }
-
+        :root { --primary: #2563eb; --success: #16a34a; --danger: #dc2626; --bg: #f8fafc; --dark: #1e293b; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--dark); margin: 0; padding: 20px; }
+        .container { max-width: 1000px; margin: auto; }
+        .card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px; border: 1px solid #e2e8f0; }
+        .header-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .stat-val { font-size: 2rem; font-weight: 700; color: var(--danger); }
+        .stat-label { font-size: 0.85rem; color: #64748b; font-weight: 600; text-transform: uppercase; }
+        .calc-section { background: #f0fdf4; border: 1px solid #bbf7d0; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th { text-align: left; padding: 12px; font-size: 0.75rem; text-transform: uppercase; color: #64748b; border-bottom: 2px solid #e2e8f0; }
-        td { padding: 12px; border-bottom: 1px solid #e2e8f0; font-size: 0.938rem; }
-        
-        .badge { padding: 4px 10px; border-radius: 99px; font-size: 0.75rem; font-weight: 600; cursor: pointer; }
-        .badge-pendente { background: #fee2e2; color: var(--danger); }
-        .badge-pago { background: #dcfce7; color: var(--success); }
-        
-        @media (max-width: 600px) { .grid-header { grid-template-columns: 1fr; } .no-mobile { display: none; } }
-        @media print { .no-print { display: none; } .card { box-shadow: none; border: 1px solid #eee; } }
+        th { text-align: left; padding: 15px; font-size: 0.75rem; color: #64748b; border-bottom: 2px solid #e2e8f0; }
+        td { padding: 15px; border-bottom: 1px solid #f1f5f9; font-size: 0.95rem; }
+        .badge { padding: 6px 12px; border-radius: 99px; font-size: 0.7rem; font-weight: 800; display: inline-block; }
+        .badge-pendente { background: #fee2e2; color: var(--danger); border: 1px solid #fecaca; }
+        .badge-pago { background: #dcfce7; color: var(--success); border: 1px solid #bbf7d0; }
+        #loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.95); z-index: 1000; flex-direction: column; justify-content: center; align-items: center; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; width: 45px; height: 45px; animation: spin 1s linear infinite; margin-bottom: 15px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
+<div id="loading-overlay">
+    <div class="spinner"></div>
+    <div id="status-msg" style="text-align: center;">Analisando Valor e Autenticidade...<br><small>Isso pode levar alguns segundos</small></div>
+</div>
+
 <div class="container">
-    <div class="grid-header">
+    <div class="header-stats">
         <div class="card">
-            <span class="stat-label">Total Acumulado (desde Mar/24)</span>
-            <div class="stat-val" id="total-geral">R$ 0,00</div>
-            <span class="stat-label" id="qtd-meses">0 meses</span>
+            <span class="stat-label">Dívida Atual</span>
+            <div class="stat-val" id="total-pendente">R$ 0,00</div>
+            <span id="label-meses" style="color: #64748b; font-size: 0.85rem;">Calculando...</span>
         </div>
-        <div class="card calc-box no-print">
-            <h2>Calculadora Rápida</h2>
-            <div style="display: flex; gap: 10px; align-items: center;">
-                <input type="number" id="input-qtd" placeholder="Qtd meses">
-                <button onclick="calcMeses()">Calcular Total</button>
+        
+        <div class="card calc-section">
+            <span class="stat-label" style="color: var(--success)">Calculadora Inteligente</span>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <input type="number" id="qtd-input" style="padding:10px; border-radius:6px; border:1px solid #cbd5e1; width:70px;" placeholder="Qtd.">
+                <button onclick="calcular()" style="background:var(--success); color:white; border:none; padding:10px 15px; border-radius:6px; cursor:pointer; font-weight:700;">Simular</button>
             </div>
-            <div id="res-calc" style="margin-top:10px; font-weight:600; color:var(--success);"></div>
+            <div id="res-calc" style="margin-top:10px; font-weight:700; color: #166534; font-size: 0.85rem;"></div>
         </div>
     </div>
 
     <div class="card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h2>Histórico de Pagamentos</h2>
-            <button class="no-print" style="background: #64748b;" onclick="window.print()">Gerar PDF</button>
-        </div>
+        <h2 style="margin:0 0 20px 0; font-size: 1.2rem;">Controle de Provas - Neon Pagamentos</h2>
         <table>
             <thead>
                 <tr>
-                    <th>Mês/Ano</th>
-                    <th>Valor (30%)</th>
+                    <th>Período</th>
+                    <th>Valor Esperado</th>
                     <th>Status</th>
-                    <th class="no-mobile">Ação</th>
+                    <th>Validar Comprovante</th>
                 </tr>
             </thead>
             <tbody id="tabela-corpo"></tbody>
@@ -73,9 +69,11 @@
 </div>
 
 <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
     const dataInicio = new Date(2024, 2, 1);
     const hoje = new Date();
-    const lista = [];
+    let parcelasDados = [];
 
     function getSM(ano) {
         if (ano === 2024) return 1412;
@@ -83,47 +81,120 @@
         return 1621;
     }
 
-    let d = new Date(dataInicio);
-    const corpo = document.getElementById('tabela-corpo');
+    function renderizar() {
+        const corpo = document.getElementById('tabela-corpo');
+        corpo.innerHTML = '';
+        parcelasDados = [];
+        let totalDívida = 0;
+        let count = 0;
 
-    while (d <= hoje) {
-        const ano = d.getFullYear();
-        const mes = d.toLocaleString('pt-BR', { month: 'long' });
-        const valor = getSM(ano) * 0.3;
-        const id = `p-${d.getTime()}`;
+        let d = new Date(dataInicio);
+        while (d <= hoje) {
+            const id = `p-${d.getTime()}`;
+            const valorParcela = getSM(d.getFullYear()) * 0.3;
+            const status = localStorage.getItem(id) || 'pendente';
+            
+            parcelasDados.push({id, valor: valorParcela, status, mes: d.toLocaleString('pt-BR', {month:'long'})});
+
+            if(status === 'pendente') {
+                totalDívida += valorParcela;
+                count++;
+            }
+
+            const tr = document.createElement('tr');
+            if(status === 'pago') tr.style.opacity = "0.5";
+
+            tr.innerHTML = `
+                <td style="text-transform: capitalize;"><strong>${d.toLocaleString('pt-BR', {month:'long'})}</strong> ${d.getFullYear()}</td>
+                <td>R$ ${valorParcela.toFixed(2).replace('.',',')}</td>
+                <td><span class="badge badge-${status}">${status.toUpperCase()}</span></td>
+                <td>
+                    ${status === 'pendente' ? 
+                    `<input type="file" onchange="validarExtremo(this, '${id}', ${valorParcela.toFixed(2)})" accept="image/*,.pdf">` : 
+                    `<button onclick="resetar('${id}')" style="cursor:pointer; font-size:10px;">Remover</button>`}
+                </td>
+            `;
+            corpo.appendChild(tr);
+            d.setMonth(d.getMonth() + 1);
+        }
+        document.getElementById('total-pendente').innerText = `R$ ${totalDívida.toLocaleString('pt-BR', {minimumFractionDigits:2})}`;
+        document.getElementById('label-meses').innerText = `${count} meses aguardando prova`;
+    }
+
+    async function validarExtremo(input, id, valorEsperado) {
+        const file = input.files[0];
+        if(!file) return;
+
+        document.getElementById('loading-overlay').style.display = 'flex';
         
-        lista.push({ id, mes: `${mes}/${ano}`, valor });
+        try {
+            let texto = "";
+            if (file.type === "application/pdf") {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const content = await page.getTextContent();
+                    texto += content.items.map(item => item.str).join(" ");
+                }
+            } else {
+                const { data: { text } } = await Tesseract.recognize(file, 'por');
+                texto = text;
+            }
 
-        const statusSalvo = localStorage.getItem(id) || 'pendente';
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td><strong style="text-transform: capitalize;">${mes}</strong> ${ano}</td>
-            <td>R$ ${valor.toFixed(2).replace('.',',')}</td>
-            <td><span id="badge-${id}" class="badge badge-${statusSalvo}" onclick="toggleStatus('${id}')">${statusSalvo.toUpperCase()}</span></td>
-            <td class="no-mobile"><input type="file" style="font-size:10px; width:120px"></td>
-        `;
-        corpo.appendChild(tr);
-        d.setMonth(d.getMonth() + 1);
+            const txtLower = texto.toLowerCase();
+            
+            // 1. Validar Banco e Transação
+            const temNeon = txtLower.includes("neon pagamentos");
+            const temPix = txtLower.includes("pix enviado") || txtLower.includes("comprovante");
+            
+            // 2. Validar Valor (Busca por R$ seguido de números)
+            // Remove espaços e converte vírgula em ponto para o regex
+            const valorNoTexto = texto.replace(/\s/g, '').replace(',', '.');
+            const regexValor = /r\$(\d+\.\d{2})/gi;
+            let match;
+            let valoresEncontrados = [];
+            while ((match = regexValor.exec(valorNoTexto)) !== null) {
+                valoresEncontrados.push(parseFloat(match[1]));
+            }
+
+            const valorConfere = valoresEncontrados.includes(parseFloat(valorEsperado));
+
+            if (temNeon && temPix && valorConfere) {
+                localStorage.setItem(id, 'pago');
+                renderizar();
+            } else if (!valorConfere) {
+                alert(`❌ VALOR DIVERGENTE!\n\nO comprovante enviado não contém o valor exato de R$ ${valorEsperado.toString().replace('.',',')}.\nO sistema exige o valor integral da parcela para validar.`);
+                input.value = '';
+            } else {
+                // AVISO ATUALIZADO ABAIXO
+                alert("❌ COMPROVANTE NÃO RECONHECIDO!\n\nCertifique-se de que:\n1. O banco de origem é o Neon.\n2. O arquivo é um comprovante oficial (não um print da tela de senha).\n3. A imagem está nítida e bem iluminada.");
+                input.value = '';
+            }
+        } catch (e) {
+            alert("Erro: " + e.message);
+        } finally {
+            document.getElementById('loading-overlay').style.display = 'none';
+        }
     }
 
-    document.getElementById('total-geral').innerText = `R$ ${lista.reduce((a,b)=>a+b.valor,0).toLocaleString('pt-BR',{minimumFractionDigits:2})}`;
-    document.getElementById('qtd-meses').innerText = `${lista.length} meses acumulados`;
-
-    function toggleStatus(id) {
-        const b = document.getElementById(`badge-${id}`);
-        const novo = b.classList.contains('badge-pendente') ? 'pago' : 'pendente';
-        b.className = `badge badge-${novo}`;
-        b.innerText = novo.toUpperCase();
-        localStorage.setItem(id, novo);
+    function resetar(id) {
+        if(confirm("Deseja invalidar este pagamento?")) {
+            localStorage.removeItem(id);
+            renderizar();
+        }
     }
 
-    function calcMeses() {
-        const q = parseInt(document.getElementById('input-qtd').value);
+    function calcular() {
+        const q = parseInt(document.getElementById('qtd-input').value);
         if(!q) return;
-        let soma = 0;
-        for(let i=0; i < Math.min(q, lista.length); i++) soma += lista[i].valor;
-        document.getElementById('res-calc').innerText = `Total: R$ ${soma.toLocaleString('pt-BR',{minimumFractionDigits:2})}`;
+        const p = parcelasDados.filter(x => x.status === 'pendente');
+        let s = 0;
+        for(let i=0; i<Math.min(q, p.length); i++) s += p[i].valor;
+        document.getElementById('res-calc').innerText = `Total: R$ ${s.toLocaleString('pt-BR',{minimumFractionDigits:2})}`;
     }
+
+    renderizar();
 </script>
 </body>
 </html>
