@@ -3,159 +3,127 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Controle de Pensão - Calculadora de Abatimento</title>
+    <title>Gestão Pro - Controle de Pensão</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; color: #333; }
-        .container { max-width: 1000px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        :root { --primary: #2563eb; --success: #16a34a; --danger: #dc2626; --bg: #f8fafc; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: #1e293b; margin: 0; padding: 20px; }
+        .container { max-width: 900px; margin: auto; }
         
-        /* Destaque do Mês */
-        .destaque-mes { background: linear-gradient(135deg, #1a73e8, #1557b0); color: white; padding: 20px; border-radius: 10px; margin-bottom: 25px; text-align: center; }
+        .card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .grid-header { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         
-        /* Calculadora de Abatimento */
-        .calc-container { background: #e8f0fe; padding: 20px; border-radius: 10px; margin-bottom: 25px; border-left: 5px solid #1a73e8; }
-        .calc-container h4 { margin-top: 0; color: #1a73e8; }
-        .input-group { display: flex; gap: 10px; align-items: center; }
-        input[type="number"] { padding: 10px; border: 1px solid #ccc; border-radius: 5px; flex-grow: 1; }
-        .resultado-calc { margin-top: 15px; font-weight: bold; color: #2c3e50; }
+        h1, h2 { margin: 0 0 15px 0; font-size: 1.25rem; }
+        .stat-val { font-size: 1.8rem; font-weight: 700; color: var(--primary); }
+        .stat-label { font-size: 0.875rem; color: #64748b; }
 
-        /* Tabela */
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: center; }
-        th { background: #f8f9fa; color: #5f6368; }
-        .linha-atual { background-color: #fef7e0 !important; font-weight: bold; }
+        .calc-box { background: #eff6ff; border: 1px solid #dbeafe; border-radius: 8px; padding: 16px; }
+        input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; width: 100px; }
+        button { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        button:hover { opacity: 0.9; }
 
-        /* Status */
-        .status-badge { padding: 5px 10px; border-radius: 20px; font-size: 0.8em; font-weight: bold; }
-        .pendente { background: #fce8e6; color: #d93025; }
-        .pago-status { background: #e6f4ea; color: #188038; }
-
-        .footer-total { display: flex; justify-content: space-between; align-items: center; margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px; }
-        .total-valor { font-size: 1.8em; color: #d93025; font-weight: bold; }
-
-        @media print { .no-print { display: none; } }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { text-align: left; padding: 12px; font-size: 0.75rem; text-transform: uppercase; color: #64748b; border-bottom: 2px solid #e2e8f0; }
+        td { padding: 12px; border-bottom: 1px solid #e2e8f0; font-size: 0.938rem; }
+        
+        .badge { padding: 4px 10px; border-radius: 99px; font-size: 0.75rem; font-weight: 600; cursor: pointer; }
+        .badge-pendente { background: #fee2e2; color: var(--danger); }
+        .badge-pago { background: #dcfce7; color: var(--success); }
+        
+        @media (max-width: 600px) { .grid-header { grid-template-columns: 1fr; } .no-mobile { display: none; } }
+        @media print { .no-print { display: none; } .card { box-shadow: none; border: 1px solid #eee; } }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="destaque-mes no-print">
-        <h3 id="nome-mes-atual">Março / 2026</h3>
-        <div style="font-size: 2em; font-weight: bold;" id="valor-atual">R$ 486,30</div>
-        <span>Parcela do Mês Atual (30% S.M.)</span>
+    <div class="grid-header">
+        <div class="card">
+            <span class="stat-label">Total Acumulado (desde Mar/24)</span>
+            <div class="stat-val" id="total-geral">R$ 0,00</div>
+            <span class="stat-label" id="qtd-meses">0 meses</span>
+        </div>
+        <div class="card calc-box no-print">
+            <h2>Calculadora Rápida</h2>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="number" id="input-qtd" placeholder="Qtd meses">
+                <button onclick="calcMeses()">Calcular Total</button>
+            </div>
+            <div id="res-calc" style="margin-top:10px; font-weight:600; color:var(--success);"></div>
+        </div>
     </div>
 
-    <div class="calc-container no-print">
-        <h4>🧮 Calculadora de Abatimento</h4>
-        <p>Informe um valor para ver quantos meses você consegue quitar (da mais antiga para a mais nova):</p>
-        <div class="input-group">
-            <input type="number" id="valor-abatimento" placeholder="Ex: 1500" step="0.01">
-            <button onclick="calcularAbatimento()" style="padding: 10px 20px; background: #1a73e8; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">Calcular</button>
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h2>Histórico de Pagamentos</h2>
+            <button class="no-print" style="background: #64748b;" onclick="window.print()">Gerar PDF</button>
         </div>
-        <div id="resultado-calc" class="resultado-calc"></div>
-    </div>
-
-    <h2>Histórico de Débitos</h2>
-    <table id="tabela-principal">
-        <thead>
-            <tr>
-                <th>Mês/Ano</th>
-                <th>Valor Parcela</th>
-                <th>Status</th>
-                <th class="no-print">Comprovante</th>
-            </tr>
-        </thead>
-        <tbody id="tabela-corpo"></tbody>
-    </table>
-
-    <div class="footer-total">
-        <div>
-            <div id="contagem-meses" style="color: #5f6368; margin-bottom: 5px;">---</div>
-            <div class="total-valor" id="total-geral">R$ 0,00</div>
-        </div>
-        <button onclick="window.print()" class="no-print" style="padding:12px 25px; background:#2c3e50; color:white; border:none; border-radius:6px; cursor:pointer;">Gerar Relatório PDF</button>
+        <table>
+            <thead>
+                <tr>
+                    <th>Mês/Ano</th>
+                    <th>Valor (30%)</th>
+                    <th>Status</th>
+                    <th class="no-mobile">Ação</th>
+                </tr>
+            </thead>
+            <tbody id="tabela-corpo"></tbody>
+        </table>
     </div>
 </div>
 
 <script>
-    const dataInicio = new Date(2024, 1, 1); // Fev 2024
+    const dataInicio = new Date(2024, 2, 1);
     const hoje = new Date();
-    const corpo = document.getElementById('tabela-corpo');
-    
-    let listaParcelas = [];
+    const lista = [];
 
-    function getSalarioMinimo(ano) {
-        if (ano === 2024) return 1412.00;
-        if (ano === 2025) return 1518.00;
-        return 1621.00; 
+    function getSM(ano) {
+        if (ano === 2024) return 1412;
+        if (ano === 2025) return 1518;
+        return 1621;
     }
 
-    // Inicialização da Tabela
-    let dataRodando = new Date(dataInicio);
-    while (dataRodando <= hoje) {
-        const ano = dataRodando.getFullYear();
-        const mesNome = dataRodando.toLocaleString('pt-BR', { month: 'long' });
-        const valor = getSalarioMinimo(ano) * 0.30;
+    let d = new Date(dataInicio);
+    const corpo = document.getElementById('tabela-corpo');
+
+    while (d <= hoje) {
+        const ano = d.getFullYear();
+        const mes = d.toLocaleString('pt-BR', { month: 'long' });
+        const valor = getSM(ano) * 0.3;
+        const id = `p-${d.getTime()}`;
         
-        listaParcelas.push({ 
-            mes: `${mesNome.charAt(0).toUpperCase() + mesNome.slice(1)} / ${ano}`,
-            valor: valor 
-        });
+        lista.push({ id, mes: `${mes}/${ano}`, valor });
 
-        const eMesAtual = (dataRodando.getMonth() === hoje.getMonth() && ano === hoje.getFullYear());
+        const statusSalvo = localStorage.getItem(id) || 'pendente';
         const tr = document.createElement('tr');
-        if (eMesAtual) tr.className = 'linha-atual';
-
         tr.innerHTML = `
-            <td>${mesNome.charAt(0).toUpperCase() + mesNome.slice(1)} / ${ano}</td>
-            <td>R$ ${valor.toFixed(2).replace('.', ',')}</td>
-            <td><span class="status-badge pendente">Pendente</span></td>
-            <td class="no-print"><input type="file"></td>
+            <td><strong style="text-transform: capitalize;">${mes}</strong> ${ano}</td>
+            <td>R$ ${valor.toFixed(2).replace('.',',')}</td>
+            <td><span id="badge-${id}" class="badge badge-${statusSalvo}" onclick="toggleStatus('${id}')">${statusSalvo.toUpperCase()}</span></td>
+            <td class="no-mobile"><input type="file" style="font-size:10px; width:120px"></td>
         `;
         corpo.appendChild(tr);
-        dataRodando.setMonth(dataRodando.getMonth() + 1);
+        d.setMonth(d.getMonth() + 1);
     }
 
-    // Totais Iniciais
-    const somaTotal = listaParcelas.reduce((acc, p) => acc + p.valor, 0);
-    document.getElementById('total-geral').innerText = `R$ ${somaTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-    document.getElementById('contagem-meses').innerText = `${listaParcelas.length} meses acumulados`;
+    document.getElementById('total-geral').innerText = `R$ ${lista.reduce((a,b)=>a+b.valor,0).toLocaleString('pt-BR',{minimumFractionDigits:2})}`;
+    document.getElementById('qtd-meses').innerText = `${lista.length} meses acumulados`;
 
-    // Função da Calculadora
-    function calcularAbatimento() {
-        const valorDisponivel = parseFloat(document.getElementById('valor-abatimento').value);
-        if (isNaN(valorDisponivel) || valorDisponivel <= 0) {
-            alert("Insira um valor válido.");
-            return;
-        }
+    function toggleStatus(id) {
+        const b = document.getElementById(`badge-${id}`);
+        const novo = b.classList.contains('badge-pendente') ? 'pago' : 'pendente';
+        b.className = `badge badge-${novo}`;
+        b.innerText = novo.toUpperCase();
+        localStorage.setItem(id, novo);
+    }
 
-        let saldo = valorDisponivel;
-        let mesesPagos = 0;
-        let mesesLista = "";
-
-        for (let p of listaParcelas) {
-            if (saldo >= p.valor) {
-                saldo -= p.valor;
-                mesesPagos++;
-                mesesLista += `<li>${p.mes}</li>`;
-            } else {
-                break;
-            }
-        }
-
-        let resultadoHTML = `Com R$ ${valorDisponivel.toFixed(2).replace('.', ',')}:<br>`;
-        if (mesesPagos > 0) {
-            resultadoHTML += `✅ Você quita **${mesesPagos} meses** completos.<br>`;
-            resultadoHTML += `<ul style="font-size: 0.9em; margin-top: 5px; color: #188038;">${mesesLista}</ul>`;
-            if (saldo > 0) {
-                resultadoHTML += `💰 Sobra R$ ${saldo.toFixed(2).replace('.', ',')} para abater na próxima parcela.`;
-            }
-        } else {
-            resultadoHTML += `⚠️ Esse valor não é suficiente para quitar o mês mais antigo (R$ ${listaParcelas[0].valor.toFixed(2).replace('.', ',')}).`;
-        }
-        
-        document.getElementById('resultado-calc').innerHTML = resultadoHTML;
+    function calcMeses() {
+        const q = parseInt(document.getElementById('input-qtd').value);
+        if(!q) return;
+        let soma = 0;
+        for(let i=0; i < Math.min(q, lista.length); i++) soma += lista[i].valor;
+        document.getElementById('res-calc').innerText = `Total: R$ ${soma.toLocaleString('pt-BR',{minimumFractionDigits:2})}`;
     }
 </script>
-
 </body>
 </html>
