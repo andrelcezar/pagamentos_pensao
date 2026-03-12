@@ -3,198 +3,210 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GLCTech - Gestão Blindada v3.0</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>Painel de Controle Pessoal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-storage-compat.js"></script>
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
     <style>
-        :root { --primary: #2563eb; --success: #16a34a; --danger: #dc2626; --bg: #f8fafc; --dark: #1e293b; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--dark); margin: 0; padding: 20px; }
+        :root { 
+            --primary: #475569; --success: #10b981; --danger: #ef4444; 
+            --bg: #f8fafc; --card: #ffffff; --text: #1e293b;
+        }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
         .container { max-width: 1000px; margin: auto; }
-        .card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px; border: 1px solid #e2e8f0; }
-        .header-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .stat-val { font-size: 2rem; font-weight: 700; color: var(--danger); }
-        .stat-label { font-size: 0.85rem; color: #64748b; font-weight: 600; text-transform: uppercase; }
-        .calc-section { background: #f0fdf4; border: 1px solid #bbf7d0; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th { text-align: left; padding: 15px; font-size: 0.75rem; color: #64748b; border-bottom: 2px solid #e2e8f0; }
-        td { padding: 15px; border-bottom: 1px solid #f1f5f9; font-size: 0.95rem; }
-        .badge { padding: 6px 12px; border-radius: 99px; font-size: 0.7rem; font-weight: 800; display: inline-block; }
-        .badge-pendente { background: #fee2e2; color: var(--danger); border: 1px solid #fecaca; }
-        .badge-pago { background: #dcfce7; color: var(--success); border: 1px solid #bbf7d0; }
-        #loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.95); z-index: 1000; flex-direction: column; justify-content: center; align-items: center; }
-        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; width: 45px; height: 45px; animation: spin 1s linear infinite; margin-bottom: 15px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; }
+        .card { background: var(--card); border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; margin-bottom: 20px; }
+        .stat-val { font-size: 2.2rem; font-weight: 800; color: var(--danger); }
+        .btn { padding: 10px 20px; border-radius: 8px; border: none; font-weight: 700; cursor: pointer; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-success { background: var(--success); color: white; width: 100%; margin-top: 15px; }
+        .grid-meses { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; margin: 12px 0; }
+        .mes-tag { background: #f0fdf4; padding: 8px; border-radius: 6px; border: 1px solid #bbf7d0; text-align: center; }
+        .mes-tag span { display: block; font-size: 0.65rem; font-weight: 800; color: #166534; }
+        .table-wrap { background: white; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f1f5f9; padding: 12px; text-align: left; font-size: 0.7rem; text-transform: uppercase; }
+        td { padding: 12px; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; }
+        #overlay { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); z-index: 999; flex-direction: column; justify-content: center; align-items: center; color: white; }
+        .spinner { border: 3px solid rgba(255,255,255,0.2); border-top: 3px solid white; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
-<div id="loading-overlay">
-    <div class="spinner"></div>
-    <div id="status-msg" style="text-align: center;">Analisando Valor e Autenticidade...<br><small>Isso pode levar alguns segundos</small></div>
-</div>
+<div id="overlay"><div class="spinner"></div><p style="margin-top:15px;">Validando Comprovante...</p></div>
 
 <div class="container">
-    <div class="header-stats">
-        <div class="card">
-            <span class="stat-label">Dívida Atual</span>
-            <div class="stat-val" id="total-pendente">R$ 0,00</div>
-            <span id="label-meses" style="color: #64748b; font-size: 0.85rem;">Calculando...</span>
-        </div>
-        
-        <div class="card calc-section">
-            <span class="stat-label" style="color: var(--success)">Calculadora Inteligente</span>
-            <div style="display: flex; gap: 10px; margin-top: 10px;">
-                <input type="number" id="qtd-input" style="padding:10px; border-radius:6px; border:1px solid #cbd5e1; width:70px;" placeholder="Qtd.">
-                <button onclick="calcular()" style="background:var(--success); color:white; border:none; padding:10px 15px; border-radius:6px; cursor:pointer; font-weight:700;">Simular</button>
-            </div>
-            <div id="res-calc" style="margin-top:10px; font-weight:700; color: #166534; font-size: 0.85rem;"></div>
-        </div>
+    <div class="header">
+        <div style="font-weight: 800; color: var(--primary);">CONTROLE DE PENSÃO</div>
+        <div id="progresso" style="font-size: 0.75rem; font-weight: 700;"></div>
     </div>
 
     <div class="card">
-        <h2 style="margin:0 0 20px 0; font-size: 1.2rem;">Controle de Provas - Neon Pagamentos</h2>
+        <div style="font-size: 0.7rem; font-weight: 700; color: #64748b;">TOTAL EM ABERTO</div>
+        <div class="stat-val" id="total-geral">R$ 0,00</div>
+    </div>
+
+    <div class="card">
+        <div style="font-weight: 700; margin-bottom: 12px;">Simulador de Lote</div>
+        <div style="display:flex; gap:10px;">
+            <input type="number" id="input-qtd" value="8" min="1" style="width:50px; padding:8px; border-radius:6px; border:1px solid #ddd; text-align:center; font-weight:700;">
+            <button class="btn btn-primary" onclick="simularLote()">Calcular Selecionados</button>
+        </div>
+        
+        <div id="box-lote" style="display:none; margin-top:15px; padding:15px; background:#f8fafc; border: 1px solid #e2e8f0; border-radius:10px;">
+            <div id="total-lote-info" style="font-weight:800; color:var(--success); font-size:1.3rem;"></div>
+            <div style="font-size:0.7rem; font-weight:700; color:#64748b; margin-top:10px;">ESTES MESES SERÃO MARCADOS COMO PAGOS:</div>
+            <div id="lista-meses-detalhe" class="grid-meses"></div>
+            
+            <input type="file" id="upload-lote" style="display:none" onchange="processarLote(this)" accept="image/*,.pdf">
+            <button class="btn btn-success" onclick="document.getElementById('upload-lote').click()">Validar e Quitar Todos</button>
+        </div>
+    </div>
+
+    <div class="table-wrap">
         <table>
-            <thead>
-                <tr>
-                    <th>Período</th>
-                    <th>Valor Esperado</th>
-                    <th>Status</th>
-                    <th>Validar Comprovante</th>
-                </tr>
-            </thead>
-            <tbody id="tabela-corpo"></tbody>
+            <thead><tr><th>Mês/Ano</th><th>Valor</th><th>Status</th><th>Ações</th></tr></thead>
+            <tbody id="corpo-tabela"></tbody>
         </table>
     </div>
 </div>
 
 <script>
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const firebaseConfig = {
+        apiKey: "AIzaSyCzAXQ4DrPvIIgOdMY-14b8nuyVZN0dU54",
+        authDomain: "pensao-fd881.firebaseapp.com",
+        databaseURL: "https://pensao-fd881-default-rtdb.firebaseio.com",
+        projectId: "pensao-fd881",
+        storageBucket: "pensao-fd881.firebasestorage.app",
+        messagingSenderId: "483959140139",
+        appId: "1:483959140139:web:e08f75dbe8a4ef845a1f6e"
+    };
+    
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const storage = firebase.storage();
 
     const dataInicio = new Date(2024, 2, 1);
     const hoje = new Date();
-    let parcelasDados = [];
+    let parcelasLocais = [];
 
-    function getSM(ano) {
-        if (ano === 2024) return 1412;
-        if (ano === 2025) return 1518;
-        return 1621;
+    function getValorAno(ano) {
+        if (ano <= 2024) return 1412 * 0.3;
+        if (ano === 2025) return 1518 * 0.3;
+        return 1621 * 0.3;
     }
 
-    function renderizar() {
-        const corpo = document.getElementById('tabela-corpo');
-        corpo.innerHTML = '';
-        parcelasDados = [];
-        let totalDívida = 0;
-        let count = 0;
-
+    db.ref('pensao').on('value', (snapshot) => {
+        const statusNuvem = snapshot.val() || {};
+        const corpo = document.getElementById('corpo-tabela');
+        corpo.innerHTML = ''; parcelasLocais = [];
+        let pendente = 0, pagos = 0, total = 0;
         let d = new Date(dataInicio);
+
         while (d <= hoje) {
-            const id = `p-${d.getTime()}`;
-            const valorParcela = getSM(d.getFullYear()) * 0.3;
-            const status = localStorage.getItem(id) || 'pendente';
+            const ano = d.getFullYear();
+            const id = `p-${ano}-${d.getMonth()}`;
+            const valor = getValorAno(ano);
+            const info = statusNuvem[id] || { status: 'pendente' };
+            const mes = d.toLocaleString('pt-BR', { month: 'long' });
             
-            parcelasDados.push({id, valor: valorParcela, status, mes: d.toLocaleString('pt-BR', {month:'long'})});
+            parcelasLocais.push({ id, valor, status: info.status, ref: `${mes}/${ano}` });
+            total++;
+            if(info.status === 'pago') pagos++; else pendente += valor;
 
-            if(status === 'pendente') {
-                totalDívida += valorParcela;
-                count++;
-            }
-
-            const tr = document.createElement('tr');
-            if(status === 'pago') tr.style.opacity = "0.5";
-
-            tr.innerHTML = `
-                <td style="text-transform: capitalize;"><strong>${d.toLocaleString('pt-BR', {month:'long'})}</strong> ${d.getFullYear()}</td>
-                <td>R$ ${valorParcela.toFixed(2).replace('.',',')}</td>
-                <td><span class="badge badge-${status}">${status.toUpperCase()}</span></td>
-                <td>
-                    ${status === 'pendente' ? 
-                    `<input type="file" onchange="validarExtremo(this, '${id}', ${valorParcela.toFixed(2)})" accept="image/*,.pdf">` : 
-                    `<button onclick="resetar('${id}')" style="cursor:pointer; font-size:10px;">Remover</button>`}
-                </td>
-            `;
-            corpo.appendChild(tr);
+            corpo.innerHTML += `
+                <tr>
+                    <td style="text-transform:capitalize;">${mes}/${ano}</td>
+                    <td>R$ ${valor.toFixed(2).replace('.',',')}</td>
+                    <td style="color:${info.status === 'pago' ? 'green' : 'red'}; font-weight:700;">${info.status.toUpperCase()}</td>
+                    <td>
+                        ${info.status === 'pendente' ? 
+                        `<input type="file" onchange="validarIndividual(this, '${id}', ${valor.toFixed(2)})" style="font-size:0.6rem;">` : 
+                        `<button onclick="revogar('${id}')" style="color:red; border:none; background:none; cursor:pointer; font-size:10px;">ANULAR</button>`}
+                    </td>
+                </tr>`;
             d.setMonth(d.getMonth() + 1);
         }
-        document.getElementById('total-pendente').innerText = `R$ ${totalDívida.toLocaleString('pt-BR', {minimumFractionDigits:2})}`;
-        document.getElementById('label-meses').innerText = `${count} meses aguardando prova`;
-    }
+        document.getElementById('total-geral').innerText = `R$ ${pendente.toLocaleString('pt-BR',{minimumFractionDigits:2})}`;
+        document.getElementById('progresso').innerText = `${pagos}/${total} PAGOS`;
+    });
 
-    async function validarExtremo(input, id, valorEsperado) {
-        const file = input.files[0];
-        if(!file) return;
-
-        document.getElementById('loading-overlay').style.display = 'flex';
+    function simularLote() {
+        const qtd = parseInt(document.getElementById('input-qtd').value) || 1;
+        const lista = parcelasLocais.filter(p => p.status === 'pendente').slice(0, qtd);
+        if(lista.length === 0) return alert("Nada a pagar.");
         
+        const soma = lista.reduce((acc, x) => acc + x.valor, 0);
+        const grid = document.getElementById('lista-meses-detalhe');
+        grid.innerHTML = '';
+        lista.forEach(p => { grid.innerHTML += `<div class="mes-tag"><strong>${p.ref}</strong></div>`; });
+        
+        document.getElementById('total-lote-info').innerText = `Valor Total: R$ ${soma.toLocaleString('pt-BR',{minimumFractionDigits:2})}`;
+        document.getElementById('box-lote').style.display = 'block';
+        window.loteAtivo = { alvo: lista, soma: soma.toFixed(2) };
+    }
+
+    async function auditoria(file, valorAlvo, inputElement) {
         try {
-            let texto = "";
-            if (file.type === "application/pdf") {
-                const arrayBuffer = await file.arrayBuffer();
-                const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
-                for (let i = 1; i <= pdf.numPages; i++) {
-                    const page = await pdf.getPage(i);
-                    const content = await page.getTextContent();
-                    texto += content.items.map(item => item.str).join(" ");
-                }
-            } else {
-                const { data: { text } } = await Tesseract.recognize(file, 'por');
-                texto = text;
-            }
+            const imageSrc = file.type === "application/pdf" ? await pdfToImage(file) : URL.createObjectURL(file);
+            const { data: { text } } = await Tesseract.recognize(imageSrc, 'por');
+            const vBr = valorAlvo.toFixed(2).replace('.', ',');
+            if (text.toLowerCase().includes("neon") && (text.includes(vBr) || text.includes(valorAlvo.toFixed(2)))) return true;
+            alert(`Erro: Valor R$ ${vBr} não encontrado no comprovante.`);
+        } catch (e) { alert("Erro no OCR."); }
+        if(inputElement) inputElement.value = ""; return false;
+    }
 
-            const txtLower = texto.toLowerCase();
+    async function pdfToImage(file) {
+        const pdf = await pdfjsLib.getDocument(await file.arrayBuffer()).promise;
+        const page = await pdf.getPage(1);
+        const viewport = page.getViewport({ scale: 2 });
+        const canvas = document.createElement('canvas');
+        canvas.height = viewport.height; canvas.width = viewport.width;
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+        return canvas.toDataURL();
+    }
+
+    async function processarLote(input) {
+        document.getElementById('overlay').style.display = 'flex';
+        const valorLote = parseFloat(window.loteAtivo.soma);
+        
+        if (await auditoria(input.files[0], valorLote, input)) {
+            const ref = storage.ref(`comprovantes/lote_${Date.now()}`);
+            await ref.put(input.files[0]);
+            const url = await ref.getDownloadURL();
             
-            // 1. Validar Banco e Transação
-            const temNeon = txtLower.includes("neon pagamentos");
-            const temPix = txtLower.includes("pix enviado") || txtLower.includes("comprovante");
+            // ATUALIZAÇÃO AUTOMÁTICA DE TODAS AS PARCELAS DO LOTE
+            const updates = {};
+            window.loteAtivo.alvo.forEach(p => {
+                updates['/pensao/' + p.id] = { status: 'pago', comprovante: url, dataPagamento: new Date().toISOString() };
+            });
             
-            // 2. Validar Valor (Busca por R$ seguido de números)
-            // Remove espaços e converte vírgula em ponto para o regex
-            const valorNoTexto = texto.replace(/\s/g, '').replace(',', '.');
-            const regexValor = /r\$(\d+\.\d{2})/gi;
-            let match;
-            let valoresEncontrados = [];
-            while ((match = regexValor.exec(valorNoTexto)) !== null) {
-                valoresEncontrados.push(parseFloat(match[1]));
-            }
-
-            const valorConfere = valoresEncontrados.includes(parseFloat(valorEsperado));
-
-            if (temNeon && temPix && valorConfere) {
-                localStorage.setItem(id, 'pago');
-                renderizar();
-            } else if (!valorConfere) {
-                alert(`❌ VALOR DIVERGENTE!\n\nO comprovante enviado não contém o valor exato de R$ ${valorEsperado.toString().replace('.',',')}.\nO sistema exige o valor integral da parcela para validar.`);
-                input.value = '';
-            } else {
-                // AVISO ATUALIZADO ABAIXO
-                alert("❌ COMPROVANTE NÃO RECONHECIDO!\n\nCertifique-se de que:\n1. O banco de origem é o Neon.\n2. O arquivo é um comprovante oficial (não um print da tela de senha).\n3. A imagem está nítida e bem iluminada.");
-                input.value = '';
-            }
-        } catch (e) {
-            alert("Erro: " + e.message);
-        } finally {
-            document.getElementById('loading-overlay').style.display = 'none';
+            await db.ref().update(updates);
+            alert("Sucesso! " + window.loteAtivo.alvo.length + " parcelas quitadas.");
+            document.getElementById('box-lote').style.display = 'none';
         }
+        document.getElementById('overlay').style.display = 'none';
     }
 
-    function resetar(id) {
-        if(confirm("Deseja invalidar este pagamento?")) {
-            localStorage.removeItem(id);
-            renderizar();
+    async function validarIndividual(input, id, valor) {
+        document.getElementById('overlay').style.display = 'flex';
+        if (await auditoria(input.files[0], valor, input)) {
+            const ref = storage.ref(`comprovantes/${id}`);
+            await ref.put(input.files[0]);
+            await db.ref('pensao/'+id).set({ status: 'pago', comprovante: await ref.getDownloadURL() });
         }
+        document.getElementById('overlay').style.display = 'none';
     }
 
-    function calcular() {
-        const q = parseInt(document.getElementById('qtd-input').value);
-        if(!q) return;
-        const p = parcelasDados.filter(x => x.status === 'pendente');
-        let s = 0;
-        for(let i=0; i<Math.min(q, p.length); i++) s += p[i].valor;
-        document.getElementById('res-calc').innerText = `Total: R$ ${s.toLocaleString('pt-BR',{minimumFractionDigits:2})}`;
-    }
-
-    renderizar();
+    function revogar(id) { if(confirm("Anular?")) db.ref('pensao/'+id).remove(); }
 </script>
 </body>
 </html>

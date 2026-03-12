@@ -3,107 +3,122 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Relatório de Transparência - Status em Tempo Real</title>
+    <title>Consulta Pagamentos de Pensão - Transparência de Pagamentos</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
+
     <style>
-        :root { --primary: #1e293b; --success: #16a34a; --danger: #dc2626; --bg: #f8fafc; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); color: #1e293b; margin: 0; padding: 20px; }
-        .container { max-width: 900px; margin: auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        :root { --success: #16a34a; --bg: #f8fafc; --dark: #1e293b; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; padding: 20px; color: var(--dark); }
+        .container { max-width: 800px; margin: auto; }
+        .header { text-align: center; padding: 30px 0; }
+        .grid { display: grid; gap: 15px; }
+        .card { 
+            background: white; border-radius: 12px; padding: 20px; 
+            display: flex; justify-content: space-between; align-items: center;
+            border: 1px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .info { display: flex; flex-direction: column; }
+        .mes { font-weight: 700; text-transform: capitalize; font-size: 1.1rem; }
+        .ano { font-size: 0.8rem; color: #64748b; font-weight: 600; }
+        .valor { color: #475569; font-size: 0.9rem; margin-top: 4px; }
         
-        .header { border-bottom: 2px solid #f1f5f9; margin-bottom: 30px; padding-bottom: 20px; text-align: center; }
-        .card-total { background: var(--primary); color: white; padding: 30px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-        .total-val { font-size: 2.2rem; font-weight: 700; color: #f87171; }
-
-        table { width: 100%; border-collapse: collapse; }
-        th { text-align: left; color: #94a3b8; font-size: 0.75rem; text-transform: uppercase; padding: 15px; border-bottom: 2px solid #f1f5f9; }
-        td { padding: 15px; border-bottom: 1px solid #f1f5f9; }
-
-        /* Status Dinâmico */
-        .badge { padding: 5px 12px; border-radius: 99px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
-        .badge-pendente { background: #fee2e2; color: var(--danger); }
-        .badge-pago { background: #dcfce7; color: var(--success); }
-
-        .btn-view { padding: 6px 12px; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; font-size: 0.8rem; }
+        .btn-view { 
+            background: var(--success); color: white; border: none; padding: 10px 16px; 
+            border-radius: 8px; font-weight: 700; cursor: pointer; text-decoration: none; font-size: 0.8rem;
+        }
+        .status-wait { color: #94a3b8; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; }
         
-        @media print { .no-print { display: none; } .container { box-shadow: none; border: none; } }
+        /* Modal */
+        #modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:100; justify-content:center; align-items:center; }
+        #modal img { max-width: 90%; max-height: 80vh; border: 3px solid white; border-radius: 8px; }
+        .close { position:absolute; top:20px; right:20px; color:white; font-size:30px; cursor:pointer; font-weight:bold; }
     </style>
 </head>
 <body>
 
+<div id="modal" onclick="this.style.display='none'">
+    <span class="close">&times;</span>
+    <div id="content-modal"></div>
+</div>
+
 <div class="container">
     <div class="header">
-        <h1>Relatório de Transparência</h1>
-        <p>Acompanhamento de Débitos e Comprovantes</p>
+        <h2 style="margin:0;">Histórico de Recebimento</h2>
+        <p style="color:#64748b; font-size:0.9rem;">Atualizado em tempo real via GLCTech Cloud</p>
     </div>
 
-    <div class="card-total">
-        <div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">SALDO EM ABERTO</div>
-            <div id="resumo-meses" style="font-weight: 600;">Carregando...</div>
+    <div id="lista-parcelas" class="grid">
         </div>
-        <div class="total-val" id="total-v">R$ 0,00</div>
-    </div>
-
-    <table>
-        <thead>
-            <tr>
-                <th>Período</th>
-                <th>Valor</th>
-                <th>Status</th>
-                <th>Comprovante</th>
-            </tr>
-        </thead>
-        <tbody id="corpo-v"></tbody>
-    </table>
-
-    <div style="text-align: center; margin-top: 30px;" class="no-print">
-        <button onclick="window.print()" style="padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
-            📥 Gerar Relatório PDF
-        </button>
-    </div>
 </div>
 
 <script>
-    const dataI = new Date(2024, 2, 1); // Março/2024
+    // Configurações que você enviou
+    const firebaseConfig = {
+        apiKey: "AIzaSyCzAXQ4DrPvIIgOdMY-14b8nuyVZN0dU54",
+        authDomain: "pensao-fd881.firebaseapp.com",
+        databaseURL: "https://pensao-fd881-default-rtdb.firebaseio.com",
+        projectId: "pensao-fd881",
+        storageBucket: "pensao-fd881.firebasestorage.app",
+        messagingSenderId: "483959140139",
+        appId: "1:483959140139:web:e08f75dbe8a4ef845a1f6e"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const dataInicio = new Date(2024, 2, 1);
     const hoje = new Date();
-    let somaPendente = 0;
-    let mesesPendentes = 0;
 
-    function getSM(ano) { return ano === 2024 ? 1412 : (ano === 2025 ? 1518 : 1621); }
-
-    let d = new Date(dataI);
-    const corpo = document.getElementById('corpo-v');
-
-    while (d <= hoje) {
-        const ano = d.getFullYear();
-        const mes = d.toLocaleString('pt-BR', { month: 'long' });
-        const valor = getSM(ano) * 0.3;
-        const id = `p-${d.getTime()}`;
-        
-        // Verifica o status no armazenamento local
-        const status = localStorage.getItem(id) || 'pendente';
-        if(status === 'pendente') {
-            somaPendente += valor;
-            mesesPendentes++;
-        }
-
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td style="text-transform: capitalize;"><strong>${mes}</strong> / ${ano}</td>
-            <td>R$ ${valor.toFixed(2).replace('.',',')}</td>
-            <td><span class="badge badge-${status}">${status === 'pago' ? 'Pago' : 'Pendente'}</span></td>
-            <td>
-                ${status === 'pago' ? 
-                '<button class="btn-view" onclick="alert(\'Arquivo anexado no PDF oficial.\')">📄 Ver Arquivo</button>' : 
-                '<span style="color:#94a3b8; font-size:0.8rem;">---</span>'}
-            </td>
-        `;
-        corpo.appendChild(tr);
-        d.setMonth(d.getMonth() + 1);
+    function getSM(ano) { 
+        return (ano <= 2024) ? 1412 : (ano === 2025 ? 1518 : 1621);
     }
 
-    document.getElementById('total-v').innerText = `R$ ${somaPendente.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-    document.getElementById('resumo-meses').innerText = `${mesesPendentes} meses em aberto`;
+    // Escuta a nuvem em tempo real
+    db.ref('pensao').on('value', (snapshot) => {
+        const dadosNuvem = snapshot.val() || {};
+        const lista = document.getElementById('lista-parcelas');
+        lista.innerHTML = '';
+
+        let d = new Date(dataInicio);
+        while (d <= hoje) {
+            const id = `p-${d.getFullYear()}-${d.getMonth()}`;
+            const valor = getSM(d.getFullYear()) * 0.3;
+            const info = dadosNuvem[id];
+            const isPago = info && info.status === 'pago';
+
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.style.borderLeft = isPago ? '6px solid var(--success)' : '6px solid #e2e8f0';
+
+            card.innerHTML = `
+                <div class="info">
+                    <span class="ano">${d.getFullYear()}</span>
+                    <span class="mes">${d.toLocaleString('pt-BR', {month:'long'})}</span>
+                    <span class="valor">R$ ${valor.toFixed(2).replace('.',',')}</span>
+                </div>
+                <div>
+                    ${isPago ? 
+                        `<button class="btn-view" onclick="abrirDoc('${info.comprovante}')">Ver Comprovante</button>` : 
+                        `<span class="status-wait">Aguardando</span>`}
+                </div>
+            `;
+            lista.appendChild(card);
+            d.setMonth(d.getMonth() + 1);
+        }
+    });
+
+    function abrirDoc(url) {
+        const modal = document.getElementById('modal');
+        const content = document.getElementById('content-modal');
+        // Verifica se é PDF ou Imagem
+        if(url.includes('.pdf') || url.includes('alt=media')) {
+             content.innerHTML = `<img src="${url}" alt="Comprovante">`;
+        }
+        modal.style.display = 'flex';
+    }
 </script>
 </body>
 </html>
