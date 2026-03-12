@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Pensão - Calculadora de Abatimento</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; color: #333; }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        
+        /* Destaque do Mês */
+        .destaque-mes { background: linear-gradient(135deg, #1a73e8, #1557b0); color: white; padding: 20px; border-radius: 10px; margin-bottom: 25px; text-align: center; }
+        
+        /* Calculadora de Abatimento */
+        .calc-container { background: #e8f0fe; padding: 20px; border-radius: 10px; margin-bottom: 25px; border-left: 5px solid #1a73e8; }
+        .calc-container h4 { margin-top: 0; color: #1a73e8; }
+        .input-group { display: flex; gap: 10px; align-items: center; }
+        input[type="number"] { padding: 10px; border: 1px solid #ccc; border-radius: 5px; flex-grow: 1; }
+        .resultado-calc { margin-top: 15px; font-weight: bold; color: #2c3e50; }
+
+        /* Tabela */
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: center; }
+        th { background: #f8f9fa; color: #5f6368; }
+        .linha-atual { background-color: #fef7e0 !important; font-weight: bold; }
+
+        /* Status */
+        .status-badge { padding: 5px 10px; border-radius: 20px; font-size: 0.8em; font-weight: bold; }
+        .pendente { background: #fce8e6; color: #d93025; }
+        .pago-status { background: #e6f4ea; color: #188038; }
+
+        .footer-total { display: flex; justify-content: space-between; align-items: center; margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px; }
+        .total-valor { font-size: 1.8em; color: #d93025; font-weight: bold; }
+
+        @media print { .no-print { display: none; } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="destaque-mes no-print">
+        <h3 id="nome-mes-atual">Março / 2026</h3>
+        <div style="font-size: 2em; font-weight: bold;" id="valor-atual">R$ 486,30</div>
+        <span>Parcela do Mês Atual (30% S.M.)</span>
+    </div>
+
+    <div class="calc-container no-print">
+        <h4>🧮 Calculadora de Abatimento</h4>
+        <p>Informe um valor para ver quantos meses você consegue quitar (da mais antiga para a mais nova):</p>
+        <div class="input-group">
+            <input type="number" id="valor-abatimento" placeholder="Ex: 1500" step="0.01">
+            <button onclick="calcularAbatimento()" style="padding: 10px 20px; background: #1a73e8; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">Calcular</button>
+        </div>
+        <div id="resultado-calc" class="resultado-calc"></div>
+    </div>
+
+    <h2>Histórico de Débitos</h2>
+    <table id="tabela-principal">
+        <thead>
+            <tr>
+                <th>Mês/Ano</th>
+                <th>Valor Parcela</th>
+                <th>Status</th>
+                <th class="no-print">Comprovante</th>
+            </tr>
+        </thead>
+        <tbody id="tabela-corpo"></tbody>
+    </table>
+
+    <div class="footer-total">
+        <div>
+            <div id="contagem-meses" style="color: #5f6368; margin-bottom: 5px;">---</div>
+            <div class="total-valor" id="total-geral">R$ 0,00</div>
+        </div>
+        <button onclick="window.print()" class="no-print" style="padding:12px 25px; background:#2c3e50; color:white; border:none; border-radius:6px; cursor:pointer;">Gerar Relatório PDF</button>
+    </div>
+</div>
+
+<script>
+    const dataInicio = new Date(2024, 1, 1); // Fev 2024
+    const hoje = new Date();
+    const corpo = document.getElementById('tabela-corpo');
+    
+    let listaParcelas = [];
+
+    function getSalarioMinimo(ano) {
+        if (ano === 2024) return 1412.00;
+        if (ano === 2025) return 1518.00;
+        return 1621.00; 
+    }
+
+    // Inicialização da Tabela
+    let dataRodando = new Date(dataInicio);
+    while (dataRodando <= hoje) {
+        const ano = dataRodando.getFullYear();
+        const mesNome = dataRodando.toLocaleString('pt-BR', { month: 'long' });
+        const valor = getSalarioMinimo(ano) * 0.30;
+        
+        listaParcelas.push({ 
+            mes: `${mesNome.charAt(0).toUpperCase() + mesNome.slice(1)} / ${ano}`,
+            valor: valor 
+        });
+
+        const eMesAtual = (dataRodando.getMonth() === hoje.getMonth() && ano === hoje.getFullYear());
+        const tr = document.createElement('tr');
+        if (eMesAtual) tr.className = 'linha-atual';
+
+        tr.innerHTML = `
+            <td>${mesNome.charAt(0).toUpperCase() + mesNome.slice(1)} / ${ano}</td>
+            <td>R$ ${valor.toFixed(2).replace('.', ',')}</td>
+            <td><span class="status-badge pendente">Pendente</span></td>
+            <td class="no-print"><input type="file"></td>
+        `;
+        corpo.appendChild(tr);
+        dataRodando.setMonth(dataRodando.getMonth() + 1);
+    }
+
+    // Totais Iniciais
+    const somaTotal = listaParcelas.reduce((acc, p) => acc + p.valor, 0);
+    document.getElementById('total-geral').innerText = `R$ ${somaTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+    document.getElementById('contagem-meses').innerText = `${listaParcelas.length} meses acumulados`;
+
+    // Função da Calculadora
+    function calcularAbatimento() {
+        const valorDisponivel = parseFloat(document.getElementById('valor-abatimento').value);
+        if (isNaN(valorDisponivel) || valorDisponivel <= 0) {
+            alert("Insira um valor válido.");
+            return;
+        }
+
+        let saldo = valorDisponivel;
+        let mesesPagos = 0;
+        let mesesLista = "";
+
+        for (let p of listaParcelas) {
+            if (saldo >= p.valor) {
+                saldo -= p.valor;
+                mesesPagos++;
+                mesesLista += `<li>${p.mes}</li>`;
+            } else {
+                break;
+            }
+        }
+
+        let resultadoHTML = `Com R$ ${valorDisponivel.toFixed(2).replace('.', ',')}:<br>`;
+        if (mesesPagos > 0) {
+            resultadoHTML += `✅ Você quita **${mesesPagos} meses** completos.<br>`;
+            resultadoHTML += `<ul style="font-size: 0.9em; margin-top: 5px; color: #188038;">${mesesLista}</ul>`;
+            if (saldo > 0) {
+                resultadoHTML += `💰 Sobra R$ ${saldo.toFixed(2).replace('.', ',')} para abater na próxima parcela.`;
+            }
+        } else {
+            resultadoHTML += `⚠️ Esse valor não é suficiente para quitar o mês mais antigo (R$ ${listaParcelas[0].valor.toFixed(2).replace('.', ',')}).`;
+        }
+        
+        document.getElementById('resultado-calc').innerHTML = resultadoHTML;
+    }
+</script>
+
+</body>
+</html>

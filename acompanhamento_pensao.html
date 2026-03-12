@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acompanhamento de Pensão - Comprovantes</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f8f9fa; padding: 20px; color: #333; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 40px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: 1px solid #eef0f2; }
+        
+        /* Cabeçalho */
+        .header-view { text-align: center; margin-bottom: 35px; border-bottom: 2px solid #3498db; padding-bottom: 20px; }
+        .header-view h1 { color: #2c3e50; margin: 0; font-size: 1.6em; }
+
+        /* Card Destaque */
+        .card-atual { background: linear-gradient(135deg, #3498db, #2980b9); color: white; padding: 25px; border-radius: 12px; text-align: center; margin-bottom: 30px; }
+        .valor-foco { font-size: 2.5em; font-weight: bold; margin: 10px 0; }
+
+        /* Tabela */
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 15px; background: #f8f9fa; color: #7f8c8d; font-size: 0.8em; text-transform: uppercase; border-bottom: 2px solid #eee; }
+        td { padding: 15px; border-bottom: 1px solid #f1f1f1; vertical-align: middle; }
+        
+        .linha-destaque { background-color: #fff9e6; font-weight: bold; }
+        
+        /* Botão de Comprovante */
+        .btn-comprovante { 
+            background: #f1f3f4; 
+            color: #5f6368; 
+            border: 1px solid #dadce0; 
+            padding: 6px 12px; 
+            border-radius: 4px; 
+            text-decoration: none; 
+            font-size: 0.85em; 
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .btn-comprovante:hover { background: #e8eaed; }
+        .btn-ativo { background: #e6f4ea; color: #188038; border-color: #ceead6; }
+
+        .status-pendente { color: #e74c3c; font-weight: 600; font-size: 0.9em; }
+
+        .footer-totais { margin-top: 35px; padding: 25px; background: #2c3e50; color: white; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .total-montante { font-size: 2em; font-weight: bold; color: #ff7675; }
+
+        @media print { .no-print { display: none; } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-view">
+        <h1>Relatório de Transparência</h1>
+        <p>Histórico e Comprovantes de Pagamento</p>
+    </div>
+
+    <div class="card-atual">
+        <div id="v-mes-nome">Março / 2026</div>
+        <div class="valor-foco" id="v-mes-valor">R$ 486,30</div>
+        <div style="font-size: 0.9em; opacity: 0.8;">Parcela Atual</div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Período</th>
+                <th>Valor</th>
+                <th>Status</th>
+                <th>Comprovante</th>
+            </tr>
+        </thead>
+        <tbody id="v-tabela-corpo"></tbody>
+    </table>
+
+    <div class="footer-totais">
+        <div id="v-total-meses">26 meses acumulados</div>
+        <div class="total-montante" id="v-total-geral">R$ 0,00</div>
+    </div>
+
+    <p style="text-align: center; font-size: 11px; color: #bdc3c7; margin-top: 30px;">
+        * Clique em "Ver Arquivo" para abrir o comprovante correspondente.
+    </p>
+</div>
+
+<script>
+    const dataInicial = new Date(2024, 1, 1);
+    const hoje = new Date();
+    const corpoTabela = document.getElementById('v-tabela-corpo');
+    let somaAcumulada = 0;
+
+    function obterSalarioMinimo(ano) {
+        if (ano === 2024) return 1412.00;
+        if (ano === 2025) return 1518.00;
+        return 1621.00;
+    }
+
+    let dataCursor = new Date(dataInicial);
+
+    while (dataCursor <= hoje) {
+        const ano = dataCursor.getFullYear();
+        const mes = dataCursor.toLocaleString('pt-BR', { month: 'long' });
+        const valor = obterSalarioMinimo(ano) * 0.30;
+        somaAcumulada += valor;
+
+        const eHoje = (dataCursor.getMonth() === hoje.getMonth() && ano === hoje.getFullYear());
+        const tr = document.createElement('tr');
+        if (eHoje) tr.className = 'linha-destaque';
+
+        tr.innerHTML = `
+            <td>${mes.charAt(0).toUpperCase() + mes.slice(1)} / ${ano}</td>
+            <td>R$ ${valor.toFixed(2).replace('.', ',')}</td>
+            <td><span class="status-pendente" id="status-${dataCursor.getTime()}">Aguardando</span></td>
+            <td>
+                <button class="btn-comprovante" onclick="alert('Funcionalidade de visualização requer upload prévio na página de gestão.')">
+                    📄 Ver Arquivo
+                </button>
+            </td>
+        `;
+        corpoTabela.appendChild(tr);
+        dataCursor.setMonth(dataCursor.getMonth() + 1);
+    }
+
+    document.getElementById('v-total-geral').innerText = `R$ ${somaAcumulada.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+</script>
+
+</body>
+</html>
