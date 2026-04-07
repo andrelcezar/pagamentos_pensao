@@ -106,6 +106,33 @@
         </div>
     </div>
 
+    <div class="card" style="border-left: 4px solid #3b82f6;">
+        <div style="font-weight:700; margin-bottom:12px; color:#1d4ed8;">📋 Carteira de Trabalho Digital (CTPS)</div>
+        <div class="hint" style="margin-bottom:14px;">
+            Envie o PDF da <strong>Carteira de Trabalho Digital</strong>. O sistema extrai automaticamente a data de início no novo emprego e o salário contratual, e recalcula todas as parcelas a partir daquele mês.
+        </div>
+
+        <div class="subgrid">
+            <div class="field">
+                <label style="font-size:0.85rem; font-weight:700;">PDF da Carteira de Trabalho Digital</label>
+                <input type="file" id="upload-ctps" accept=".pdf">
+                <button class="btn" style="background:#3b82f6; color:white; width:100%; margin-top:10px;" onclick="processarCTPS()">Ler CTPS e Recalcular Pensão</button>
+            </div>
+
+            <div>
+                <div style="font-size:0.85rem; font-weight:700; margin-bottom:8px;">O que este envio faz</div>
+                <div class="hint">
+                    O sistema identifica o <strong>vínculo empregatício mais recente</strong> da CTPS (data de admissão e salário). A partir do mês de admissão, as parcelas pendentes são recalculadas como <strong>30% do salário contratual</strong>.
+                    O status de desempregado é desmarcado automaticamente.
+                </div>
+                <div id="ctps-resultado" style="display:none; margin-top:12px; padding:12px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px;">
+                    <div style="font-weight:700; color:#1d4ed8; font-size:0.85rem;">✅ CTPS Processada</div>
+                    <div id="ctps-info" style="font-size:0.82rem; margin-top:6px; color:#1e40af;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="card">
         <div style="font-weight: 700; margin-bottom: 12px;">Simulador de Lote</div>
         <div style="display:flex; gap:10px;">
@@ -628,6 +655,258 @@
         if(confirm("Anular?")) {
             await db.ref('pensao/'+id).remove();
             await carregarParcelas();
+        }
+    }
+
+
+    // ─────────────────────────────────────────────
+    // CARTEIRA DE TRABALHO DIGITAL (CTPS) - Funções
+    // ─────────────────────────────────────────────
+
+    async function extrairTextoCTPS(file) {
+        // Tenta extração de texto nativo do PDF primeiro (mais preciso)
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            let fullText = '';
+            for (let p = 1; p <= Math.min(pdf.numPages, 10); p++) {
+                const page = await pdf.getPage(p);
+                const content = await page.getTextContent();
+                fullText += content.items.map(i => i.str).join(' ') + '\n';
+            }
+            if (fullText.trim().length > 100) return fullText;
+        } catch (_) {}
+
+        // Fallback: OCR via Tesseract
+        const imageSrc = await pdfToImage(file);
+        const { data: { text } } = await Tesseract.recognize(imageSrc, 'por');
+        return text;
+    }
+
+    function extrairVinculoMaisRecente(texto) {
+        const norm = normalizarTexto(texto);
+        const original = texto;
+
+        // ── Data de admissão ──────────────────────────────
+        // Padrões comuns na CTPS digital: "admissão: 01/04/2025", "data de admissao 01-04-2025",
+        // "inicio: 2025-04-01", "admitido em abril de 2025"
+        let dataAdmissao = null;
+
+        const padroesData = [
+            // DD/MM/YYYY ou DD-MM-YYYY após palavras-chave
+            /(?:admiss[aã]o|admitido|data\s+de\s+inicio|inicio\s+do\s+contrato|data\s+inicio)[^\d]{0,20}(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](20\d{2})/i,
+            // YYYY-MM-DD (ISO)
+            /(?:admiss[aã]o|admitido|data\s+de\s+inicio|inicio\s+do\s+contrato)[^\d]{0,20}(20\d{2})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/i,
+            // "abril/2025" ou "04/2025" após palavra-chave
+            /(?:admiss[aã]o|admitido|inicio)[^\d]{0,15}(?:(\d{1,2})[\/\-](20\d{2}))/i,
+        ];
+
+        for (const re of padroesData) {
+            const m = norm.match(re);
+            if (m) {
+                // Tenta montar a data — detecta formato pelo índice
+                const g = m.slice(1).map(Number);
+                if (g[2] >= 2000) {
+                    // formato DD MM YYYY
+                    dataAdmissao = new Date(g[2], g[1] - 1, g[0] || 1);
+                } else if (g[0] >= 2000) {
+                    // formato YYYY MM DD
+                    dataAdmissao = new Date(g[0], g[1] - 1, g[2] || 1);
+                } else if (g[1] >= 2000) {
+                    // formato MM YYYY (sem dia)
+                    dataAdmissao = new Date(g[1], g[0] - 1, 1);
+                }
+                if (dataAdmissao && !isNaN(dataAdmissao)) break;
+            }
+        }
+
+        // Busca genérica por data se padrões específicos falharam
+        if (!dataAdmissao) {
+            const datas = [];
+            const reGenerico = /\b(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](20\d{2})\b/g;
+            let m;
+            while ((m = reGenerico.exec(original)) !== null) {
+                const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+                if (!isNaN(d) && d <= new Date()) datas.push(d);
+            }
+            // Pega a data mais recente encontrada no documento
+            if (datas.length) {
+                datas.sort((a, b) => b - a);
+                dataAdmissao = datas[0];
+            }
+        }
+
+        // ── Salário ───────────────────────────────────────
+        // Padrões: "salário: R$ 3.500,00", "remuneracao 3500,00", "salario base 3.500,00"
+        let salario = null;
+
+        const padroesSalario = [
+            /(?:sal[aá]rio\s*(?:base|bruto|contratual)?|remuner[aá][çc][aã]o|remunera[çc]ao|piso\s+salarial)[^\d]{0,25}(?:r\$\s*)?([\d.]+,\d{2})/i,
+            /(?:r\$)\s*([\d.]+,\d{2})\s*(?:mensais?|\/\s*m[eê]s)/i,
+            // fallback: procura o maior valor monetário na área de admissão
+        ];
+
+        for (const re of padroesSalario) {
+            const m = norm.match(re) || original.match(re);
+            if (m) {
+                salario = parseMoedaBR(m[1]);
+                if (salario && salario > 0) break;
+            }
+        }
+
+        // Fallback: pega o maior valor monetário do documento (provável salário)
+        if (!salario) {
+            const valores = parseCurrencyCandidates(original)
+                .filter(v => v >= SALARIO_MINIMO_ATUAL && v <= 50000);
+            if (valores.length) salario = Math.max(...valores);
+        }
+
+        return { dataAdmissao, salario };
+    }
+
+    function parseMoedaBR(str) {
+        if (!str) return null;
+        const v = parseFloat(str.replace(/\./g, '').replace(',', '.'));
+        return isNaN(v) ? null : v;
+    }
+
+    async function processarCTPS() {
+        const input = document.getElementById('upload-ctps');
+        const file = input.files?.[0];
+        if (!file) { alert('Selecione o PDF da Carteira de Trabalho Digital.'); return; }
+        if (file.type !== 'application/pdf') { alert('Por favor, envie um arquivo PDF.'); return; }
+
+        overlay(true, 'Lendo Carteira de Trabalho...');
+        try {
+            // 1. Lê o texto da CTPS
+            const texto = await extrairTextoCTPS(file);
+            const { dataAdmissao, salario } = extrairVinculoMaisRecente(texto);
+
+            if (!dataAdmissao) {
+                alert('Não foi possível identificar a data de admissão na CTPS.\nVerifique se o PDF está legível.');
+                return;
+            }
+
+            const salarioStr = salario ? moneyBR(salario) : '(não encontrado — será usado salário mínimo)';
+            const dataStr = dataAdmissao.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+            const pensao15 = salario ? Number((salario * 0.15).toFixed(2)) : null;
+            const novoValor = pensao15 || Number((SALARIO_MINIMO_ATUAL * 0.15).toFixed(2));
+            const pensaoStr = moneyBR(novoValor);
+
+            const confirmar = confirm(
+                `CTPS processada!\n\n` +
+                `📅 Admissão detectada: ${dataStr}\n` +
+                `💰 Salário detectado: ${salarioStr}\n` +
+                `📊 Nova pensão (15%): ${pensaoStr}\n\n` +
+                `Recalcular parcelas PENDENTES a partir de ${dataStr}?`
+            );
+            if (!confirmar) return;
+
+            overlay(true, 'Salvando recálculo...');
+
+            document.getElementById('check-desempregado').checked = false;
+
+            const mesInicio = dataAdmissao.getMonth();
+            const anoInicio = dataAdmissao.getFullYear();
+            const agora = new Date();
+            const ts = new Date().toISOString();
+
+            // 2. UMA única leitura do Firebase — reutiliza parcelasLocais se já carregado
+            const statusNuvem = parcelasLocais.length
+                ? Object.fromEntries(parcelasLocais.map(p => [p.id, p]))
+                : ((await db.ref('pensao').once('value')).val() || {});
+
+            // 3. Monta objeto de updates em memória (sem loops adicionais)
+            const updates = {};
+            let d = new Date(dataInicio);
+            while (d <= agora) {
+                const ano = d.getFullYear();
+                const mes = d.getMonth();
+                const id = `p-${ano}-${mes}`;
+                const info = statusNuvem[id] || {};
+                const eDepoisAdmissao = ano > anoInicio || (ano === anoInicio && mes >= mesInicio);
+                const ePendente = (info.status || 'pendente') === 'pendente';
+                if (eDepoisAdmissao && ePendente) {
+                    updates[`/pensao/${id}`] = {
+                        status: 'pendente',
+                        valor: novoValor,
+                        origemCalculo: 'ctps',
+                        salarioCtps: salario || null,
+                        dataAdmissaoCtps: dataAdmissao.toISOString(),
+                        desempregado: false,
+                        atualizadoEm: ts
+                    };
+                }
+                d.setMonth(d.getMonth() + 1);
+            }
+
+            const qtd = Object.keys(updates).length;
+            if (qtd === 0) { alert('Nenhuma parcela pendente encontrada a partir da data de admissão.'); return; }
+
+            // 4. UMA única escrita no Firebase (multi-path update = atômica e rápida)
+            await db.ref().update(updates);
+
+            // 5. Atualiza a UI localmente — sem re-buscar o Firebase
+            parcelasLocais.forEach(p => {
+                const id = p.id;
+                if (updates[`/pensao/${id}`]) p.valor = novoValor;
+            });
+
+            // Atualiza células da tabela diretamente no DOM
+            const rows = document.querySelectorAll('#corpo-tabela tr');
+            rows.forEach(row => {
+                const tdMes = row.cells[0]?.innerText || '';
+                const matchedParcela = parcelasLocais.find(p => {
+                    const { mes, ano } = obterMesAnoPorId(p.id);
+                    return updates[`/pensao/${p.id}`] &&
+                        tdMes.toLowerCase().includes(nomesMeses[mes - 1]) &&
+                        tdMes.includes(String(ano));
+                });
+                if (matchedParcela) {
+                    row.cells[1].innerText = moneyBR(novoValor);
+                }
+            });
+
+            // Recalcula total em aberto
+            const pendente = parcelasLocais.filter(p => p.status === 'pendente').reduce((s, p) => s + p.valor, 0);
+            document.getElementById('total-geral').innerText = moneyBR(pendente);
+
+            // 6. Upload do PDF em background (não bloqueia o usuário)
+            const resultBox = document.getElementById('ctps-resultado');
+            const resultInfo = document.getElementById('ctps-info');
+            resultInfo.innerHTML = `
+                <b>Admissão:</b> ${dataStr} &nbsp;|&nbsp;
+                <b>Salário:</b> ${salarioStr} &nbsp;|&nbsp;
+                <b>Nova parcela (30%):</b> ${pensaoStr}<br>
+                <b>Parcelas recalculadas:</b> ${qtd} &nbsp;
+                <span style="color:#93c5fd; font-size:0.75rem;">(salvando PDF em background...)</span>
+            `;
+            resultBox.style.display = 'block';
+            overlay(false);
+            input.value = '';
+            alert(`✅ Sucesso! ${qtd} parcela(s) recalculada(s) para ${pensaoStr}/mês a partir de ${dataStr}.`);
+
+            // Upload assíncrono sem bloquear
+            storage.ref(`ctps/ctps_${Date.now()}_${file.name}`).put(file)
+                .then(snap => snap.ref.getDownloadURL())
+                .then(url => db.ref('config/ultimaCtps').set({
+                    url,
+                    dataAdmissao: dataAdmissao.toISOString(),
+                    salario: salario || null,
+                    pensaoCalculada: novoValor,
+                    processadoEm: ts
+                }))
+                .then(() => {
+                    resultInfo.querySelector('span') &&
+                        (resultInfo.querySelector('span').outerHTML = '<span style="color:#86efac; font-size:0.75rem;">✓ PDF salvo</span>');
+                })
+                .catch(err => console.warn('Upload CTPS background falhou:', err));
+
+        } catch (e) {
+            console.error(e);
+            alert('Erro ao processar a CTPS: ' + e.message);
+            overlay(false);
+            input.value = '';
         }
     }
 
