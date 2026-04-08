@@ -1,195 +1,320 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Acompanhamento de Pensão</title>
-
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
-
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
-
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
   <style>
-    :root{
-      --primary:#475569;
-      --success:#16a34a;
-      --danger:#dc2626;
-      --bg:#f8fafc;
-      --card:#ffffff;
-      --text:#0f172a;
-      --muted:#64748b;
-      --border:#e2e8f0;
+    :root {
+      --primary: #1e40af;
+      --primary-light: #eff6ff;
+      --success: #16a34a;
+      --success-light: #f0fdf4;
+      --danger: #dc2626;
+      --danger-light: #fef2f2;
+      --warning: #d97706;
+      --warning-light: #fffbeb;
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
     }
 
-    *{ box-sizing:border-box; }
+    /* ── TOP BAR ── */
+    .topbar {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .topbar-title { font-size: 1.05rem; font-weight: 800; color: var(--primary); display: flex; align-items: center; gap: 10px; }
+    .topbar-title svg { flex-shrink: 0; }
+    .badge-live {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: #dcfce7; color: #166534;
+      font-size: 0.7rem; font-weight: 700; padding: 3px 9px;
+      border-radius: 999px; letter-spacing: .02em;
+    }
+    .badge-live::before {
+      content: ''; width: 6px; height: 6px; border-radius: 50%;
+      background: #16a34a; display: inline-block;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{ opacity:1; } 50%{ opacity:.3; } }
 
-    body{
-      margin:0;
-      padding:20px;
-      background:var(--bg);
-      color:var(--text);
-      font-family:'Inter',sans-serif;
+    /* ── LAYOUT ── */
+    .page { max-width: 1060px; margin: 0 auto; padding: 24px 20px 48px; }
+
+    /* ── METRIC CARDS ── */
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .metric {
+      background: var(--card);
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      padding: 18px 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .metric::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      border-radius: 14px 14px 0 0;
+    }
+    .metric.m-pago::before   { background: var(--success); }
+    .metric.m-pend::before   { background: var(--danger); }
+    .metric.m-total::before  { background: var(--primary); }
+    .metric.m-perc::before   { background: var(--warning); }
+    .metric-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 12px;
+      font-size: 16px;
+    }
+    .metric-label { font-size: .72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+    .metric-value { font-size: 1.65rem; font-weight: 800; line-height: 1.1; }
+    .metric-sub { font-size: .75rem; color: var(--muted); margin-top: 4px; }
+    .c-success { color: var(--success); } .c-danger { color: var(--danger); }
+    .c-primary { color: var(--primary); } .c-warning { color: var(--warning); }
+    .bg-success { background: var(--success-light); }
+    .bg-danger  { background: var(--danger-light); }
+    .bg-primary { background: var(--primary-light); }
+    .bg-warning { background: var(--warning-light); }
+
+    /* ── PROGRESS BAR ── */
+    .progress-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 18px 20px; margin-bottom: 20px;
+    }
+    .progress-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
+    .progress-header span { font-size: .8rem; font-weight: 700; color: var(--muted); }
+    .progress-bar-track {
+      background: #f1f5f9; border-radius: 999px; height: 10px; overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%; border-radius: 999px;
+      background: linear-gradient(90deg, #16a34a, #22c55e);
+      transition: width .6s ease;
+    }
+    .progress-labels { display: flex; justify-content: space-between; margin-top: 6px; font-size: .72rem; color: var(--muted); }
+
+    /* ── CHART + TABLE GRID ── */
+    .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    @media (max-width: 720px) { .main-grid { grid-template-columns: 1fr; } }
+
+    .chart-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 18px 20px;
+    }
+    .chart-card h3 { font-size: .8rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 14px; }
+
+    /* ── TIMELINE CARD ── */
+    .timeline-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 18px 20px; overflow-y: auto; max-height: 300px;
+    }
+    .timeline-card h3 { font-size: .8rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 12px; }
+    .tl-item { display: flex; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f8fafc; align-items: flex-start; }
+    .tl-item:last-child { border-bottom: none; }
+    .tl-dot {
+      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 4px;
+    }
+    .tl-dot.pago { background: var(--success); }
+    .tl-dot.pendente { background: #e2e8f0; border: 2px solid #cbd5e1; }
+    .tl-text { font-size: .82rem; line-height: 1.4; }
+    .tl-text strong { font-weight: 700; display: block; }
+    .tl-text span { color: var(--muted); font-size: .75rem; }
+
+    /* ── FILTERS ── */
+    .filters {
+      display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+      margin-bottom: 14px;
+    }
+    .filter-btn {
+      padding: 6px 14px; border-radius: 999px; font-size: .78rem; font-weight: 700;
+      border: 1.5px solid var(--border); background: var(--card);
+      color: var(--muted); cursor: pointer; transition: all .15s;
+    }
+    .filter-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .filter-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .filter-select {
+      padding: 6px 12px; border-radius: 8px; font-size: .78rem; font-weight: 600;
+      border: 1.5px solid var(--border); background: var(--card); color: var(--text);
+      cursor: pointer;
+    }
+    .search-input {
+      padding: 6px 12px; border-radius: 8px; font-size: .78rem;
+      border: 1.5px solid var(--border); background: var(--card); color: var(--text);
+      outline: none; flex: 1; min-width: 140px;
+    }
+    .search-input:focus { border-color: var(--primary); }
+
+    /* ── TABLE ── */
+    .table-wrap {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; overflow: hidden;
+    }
+    .table-header {
+      padding: 16px 20px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+    }
+    .table-header-title { font-size: .85rem; font-weight: 700; }
+    .table-count { font-size: .75rem; color: var(--muted); font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      text-align: left; background: #f8fafc;
+      padding: 10px 16px; font-size: .7rem;
+      text-transform: uppercase; color: var(--muted);
+      border-bottom: 1px solid var(--border); letter-spacing: .04em;
+      white-space: nowrap;
+    }
+    td { padding: 11px 16px; border-bottom: 1px solid #f8fafc; font-size: .88rem; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #fafbfc; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px; border-radius: 999px;
+      font-size: .72rem; font-weight: 700;
+    }
+    .badge-pago { background: #dcfce7; color: #166534; }
+    .badge-pendente { background: #fee2e2; color: #991b1b; }
+    .badge-pago::before   { content:''; width:6px; height:6px; border-radius:50%; background:#16a34a; }
+    .badge-pendente::before { content:''; width:6px; height:6px; border-radius:50%; background:#dc2626; }
+    .link-comp { color: var(--primary); font-weight: 700; text-decoration: none; font-size: .8rem; }
+    .link-comp:hover { text-decoration: underline; }
+    .empty-state {
+      padding: 40px; text-align: center; color: var(--muted); font-size: .9rem;
     }
 
-    .container{
-      max-width:1000px;
-      margin:0 auto;
-    }
+    /* ── LOADING ── */
+    .skeleton { animation: shimmer 1.4s ease-in-out infinite; background: #f1f5f9; border-radius: 6px; }
+    @keyframes shimmer { 0%,100%{ opacity:1; } 50%{ opacity:.4; } }
 
-    .header{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:16px;
-      flex-wrap:wrap;
-      margin-bottom:24px;
-      border-bottom:1px solid var(--border);
-      padding-bottom:12px;
-    }
-
-    .title{
-      font-size:1.3rem;
-      font-weight:800;
-      color:var(--primary);
-    }
-
-    .subtitle{
-      color:var(--muted);
-      font-size:.9rem;
-      margin-top:4px;
-    }
-
-    .cards{
-      display:grid;
-      grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-      gap:16px;
-      margin-bottom:20px;
-    }
-
-    .card{
-      background:var(--card);
-      border:1px solid var(--border);
-      border-radius:14px;
-      padding:18px;
-      box-shadow:0 4px 12px rgba(15,23,42,.05);
-    }
-
-    .card-label{
-      font-size:.75rem;
-      font-weight:800;
-      color:var(--muted);
-      text-transform:uppercase;
-      letter-spacing:.04em;
-    }
-
-    .card-value{
-      margin-top:8px;
-      font-size:1.8rem;
-      font-weight:800;
-    }
-
-    .success{ color:var(--success); }
-    .danger{ color:var(--danger); }
-
-    .table-wrap{
-      background:#fff;
-      border:1px solid var(--border);
-      border-radius:14px;
-      overflow:hidden;
-      box-shadow:0 4px 12px rgba(15,23,42,.05);
-    }
-
-    table{
-      width:100%;
-      border-collapse:collapse;
-    }
-
-    th{
-      text-align:left;
-      background:#f8fafc;
-      padding:12px;
-      font-size:.72rem;
-      text-transform:uppercase;
-      color:var(--muted);
-      border-bottom:1px solid var(--border);
-    }
-
-    td{
-      padding:12px;
-      border-bottom:1px solid #f1f5f9;
-      font-size:.92rem;
-    }
-
-    .badge{
-      display:inline-block;
-      padding:6px 10px;
-      border-radius:999px;
-      font-size:.75rem;
-      font-weight:800;
-    }
-
-    .badge-pago{
-      background:#dcfce7;
-      color:#166534;
-    }
-
-    .badge-pendente{
-      background:#fee2e2;
-      color:#991b1b;
-    }
-
-    .empty{
-      padding:18px;
-      color:var(--muted);
-    }
-
-    a.link{
-      color:var(--primary);
-      font-weight:700;
-      text-decoration:none;
-    }
-
-    a.link:hover{
-      text-decoration:underline;
-    }
-
-    @media (max-width: 768px){
-      body{ padding:12px; }
-      th, td{ padding:10px; font-size:.85rem; }
-      .card-value{ font-size:1.4rem; }
+    @media (max-width: 600px) {
+      th, td { padding: 9px 10px; font-size: .8rem; }
+      .metric-value { font-size: 1.3rem; }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
+
+<div class="topbar">
+  <div class="topbar-title">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1e40af" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/>
+    </svg>
+    Acompanhamento de Pensão
+  </div>
+  <span class="badge-live">Atualização em tempo real</span>
+</div>
+
+<div class="page">
+
+  <!-- METRICS -->
+  <div class="metrics">
+    <div class="metric m-pago">
+      <div class="metric-icon bg-success">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="metric-label">Total pago</div>
+      <div class="metric-value c-success" id="total-pago">—</div>
+      <div class="metric-sub" id="sub-pagas">— parcelas</div>
+    </div>
+    <div class="metric m-pend">
+      <div class="metric-icon bg-danger">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
+      <div class="metric-label">Total pendente</div>
+      <div class="metric-value c-danger" id="total-pendente">—</div>
+      <div class="metric-sub" id="sub-pendentes">— parcelas</div>
+    </div>
+    <div class="metric m-total">
+      <div class="metric-icon bg-primary">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1e40af" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      </div>
+      <div class="metric-label">Total geral</div>
+      <div class="metric-value c-primary" id="total-geral">—</div>
+      <div class="metric-sub" id="sub-total">— parcelas no total</div>
+    </div>
+    <div class="metric m-perc">
+      <div class="metric-icon bg-warning">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>
+      </div>
+      <div class="metric-label">Progresso geral</div>
+      <div class="metric-value c-warning" id="perc-pago">—%</div>
+      <div class="metric-sub">parcelas quitadas</div>
+    </div>
+  </div>
+
+  <!-- PROGRESS BAR -->
+  <div class="progress-card">
+    <div class="progress-header">
+      <strong style="font-size:.85rem;">Progresso do pagamento</strong>
+      <span id="prog-label">Carregando...</span>
+    </div>
+    <div class="progress-bar-track">
+      <div class="progress-bar-fill" id="prog-fill" style="width:0%"></div>
+    </div>
+    <div class="progress-labels">
+      <span>Início: março/2024</span>
+      <span id="prog-right">—</span>
+    </div>
+  </div>
+
+  <!-- CHART + TIMELINE -->
+  <div class="main-grid">
+    <div class="chart-card">
+      <h3>Pagamentos por ano</h3>
+      <div style="position:relative;height:220px;">
+        <canvas id="chart-anual" role="img" aria-label="Gráfico de barras com pagamentos por ano"></canvas>
+      </div>
+    </div>
+    <div class="timeline-card" id="timeline-box">
+      <h3>Últimos pagamentos</h3>
+      <div id="timeline-list"><div style="color:var(--muted);font-size:.82rem;">Carregando...</div></div>
+    </div>
+  </div>
+
+  <!-- TABLE SECTION -->
+  <div class="table-wrap">
+    <div class="table-header">
       <div>
-        <div class="title">Acompanhamento de Pensão</div>
-        <div class="subtitle">Página apenas para visualização das parcelas pagas e pendentes.</div>
+        <div class="table-header-title">Parcelas</div>
+        <div class="table-count" id="table-count"></div>
+      </div>
+      <div class="filters">
+        <input class="search-input" id="search" placeholder="Buscar mês/ano..." oninput="aplicarFiltros()">
+        <button class="filter-btn active" onclick="setFiltro('todos')">Todos</button>
+        <button class="filter-btn" onclick="setFiltro('pago')">Pagos</button>
+        <button class="filter-btn" onclick="setFiltro('pendente')">Pendentes</button>
+        <select class="filter-select" id="filtro-ano" onchange="aplicarFiltros()">
+          <option value="">Todos os anos</option>
+        </select>
       </div>
     </div>
-
-    <div class="cards">
-      <div class="card">
-        <div class="card-label">Total pago</div>
-        <div class="card-value success" id="total-pago">R$ 0,00</div>
-      </div>
-      <div class="card">
-        <div class="card-label">Total pendente</div>
-        <div class="card-value danger" id="total-pendente">R$ 0,00</div>
-      </div>
-      <div class="card">
-        <div class="card-label">Parcelas pagas</div>
-        <div class="card-value" id="qtd-pagas">0</div>
-      </div>
-      <div class="card">
-        <div class="card-label">Parcelas pendentes</div>
-        <div class="card-value" id="qtd-pendentes">0</div>
-      </div>
-    </div>
-
-    <div class="table-wrap">
+    <div style="overflow-x:auto;">
       <table>
         <thead>
           <tr>
@@ -202,156 +327,211 @@
         </thead>
         <tbody id="corpo-tabela"></tbody>
       </table>
-      <div id="estado-vazio" class="empty" style="display:none;">Nenhuma parcela encontrada.</div>
     </div>
+    <div id="estado-vazio" class="empty-state" style="display:none;">Nenhuma parcela encontrada.</div>
   </div>
 
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyCzAXQ4DrPvIIgOdMY-14b8nuyVZN0dU54",
-      authDomain: "pensao-fd881.firebaseapp.com",
-      databaseURL: "https://pensao-fd881-default-rtdb.firebaseio.com",
-      projectId: "pensao-fd881",
-      storageBucket: "pensao-fd881.firebasestorage.app",
-      messagingSenderId: "483959140139",
-      appId: "1:483959140139:web:e08f75dbe8a4ef845a1f6e"
-    };
+</div>
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyCzAXQ4DrPvIIgOdMY-14b8nuyVZN0dU54",
+    authDomain: "pensao-fd881.firebaseapp.com",
+    databaseURL: "https://pensao-fd881-default-rtdb.firebaseio.com",
+    projectId: "pensao-fd881",
+    storageBucket: "pensao-fd881.firebasestorage.app",
+    messagingSenderId: "483959140139",
+    appId: "1:483959140139:web:e08f75dbe8a4ef845a1f6e"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
 
-    const dataInicio = new Date(2024, 2, 1);
-    const hoje = new Date();
+  const dataInicio = new Date(2024, 2, 1);
+  const hoje = new Date();
+  let todasParcelas = [];
+  let filtroStatus = 'todos';
+  let chartAnual = null;
 
-    function getValorAno(ano) {
-      if (ano <= 2024) return 1412 * 0.3;
-      if (ano === 2025) return 1518 * 0.3;
-      return 1621 * 0.3;
+  function getValorAno(ano) {
+    if (ano <= 2024) return 1412 * 0.3;
+    if (ano === 2025) return 1518 * 0.3;
+    return 1621 * 0.3;
+  }
+
+  function moneyBR(v) {
+    return `R$ ${Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+  }
+
+  function formatarData(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (isNaN(d)) return '—';
+    return d.toLocaleDateString('pt-BR');
+  }
+
+  function obterTodasParcelas(nuvem = {}) {
+    const lista = [];
+    let d = new Date(dataInicio);
+    while (d <= hoje) {
+      const ano = d.getFullYear();
+      const mi = d.getMonth();
+      const id = `p-${ano}-${mi}`;
+      const info = nuvem[id] || { status: 'pendente' };
+      const mes = d.toLocaleString('pt-BR', { month: 'long' });
+      lista.push({
+        id, ano, mi,
+        ref: `${mes}/${ano}`,
+        valor: Number(info.valor ?? getValorAno(ano)),
+        status: info.status || 'pendente',
+        dataPagamento: info.dataPagamento || null,
+        comprovante: info.comprovante || null
+      });
+      d.setMonth(d.getMonth() + 1);
     }
-
-    function moneyBR(valor) {
-      return `R$ ${Number(valor || 0).toLocaleString('pt-BR', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      })}`;
-    }
-
-    function formatarData(dataIso) {
-      if (!dataIso) return "-";
-      const d = new Date(dataIso);
-      if (Number.isNaN(d.getTime())) return "-";
-      return d.toLocaleString("pt-BR");
-    }
-
-    function obterTodasParcelas(statusNuvem = {}) {
-      const parcelas = [];
-      let d = new Date(dataInicio);
-
-      while (d <= hoje) {
-        const ano = d.getFullYear();
-        const mesIndex = d.getMonth();
-        const id = `p-${ano}-${mesIndex}`;
-        const info = statusNuvem[id] || { status: "pendente" };
-        const valor = Number(info.valor ?? getValorAno(ano));
-        const status = info.status || "pendente";
-        const mes = d.toLocaleString("pt-BR", { month: "long" });
-        const ref = `${mes}/${ano}`;
-
-        parcelas.push({
-          id,
-          ref,
-          valor,
-          status,
+    const ids = new Set(lista.map(p => p.id));
+    Object.entries(nuvem).forEach(([id, info]) => {
+      if (!ids.has(id) && /^p-\d{4}-\d{1,2}$/.test(id)) {
+        const [, ano, mi] = id.split('-').map(Number);
+        const dt = new Date(ano, mi, 1);
+        const mes = dt.toLocaleString('pt-BR', { month: 'long' });
+        lista.push({
+          id, ano, mi,
+          ref: `${mes}/${ano}`,
+          valor: Number(info.valor ?? getValorAno(ano)),
+          status: info.status || 'pendente',
           dataPagamento: info.dataPagamento || null,
           comprovante: info.comprovante || null
         });
-
-        d.setMonth(d.getMonth() + 1);
       }
-
-      const idsBase = new Set(parcelas.map(p => p.id));
-
-      Object.entries(statusNuvem).forEach(([id, info]) => {
-        if (!idsBase.has(id) && /^p-\d{4}-\d{1,2}$/.test(id)) {
-          const partes = id.replace("p-", "").split("-");
-          const ano = Number(partes[0]);
-          const mesIndex = Number(partes[1]);
-          const data = new Date(ano, mesIndex, 1);
-          const ref = `${data.toLocaleString("pt-BR", { month: "long" })}/${ano}`;
-
-          parcelas.push({
-            id,
-            ref,
-            valor: Number(info.valor ?? getValorAno(ano)),
-            status: info.status || "pendente",
-            dataPagamento: info.dataPagamento || null,
-            comprovante: info.comprovante || null
-          });
-        }
-      });
-
-      parcelas.sort((a, b) => {
-        const [mesA, anoA] = a.id.replace("p-", "").split("-").map(Number);
-        const [mesB, anoB] = b.id.replace("p-", "").split("-").map(Number);
-        const dataA = new Date(mesA, anoA, 1).getTime();
-        const dataB = new Date(mesB, anoB, 1).getTime();
-        return dataA - dataB;
-      });
-
-      return parcelas;
-    }
-
-    function renderizar(statusNuvem = {}) {
-      const corpo = document.getElementById("corpo-tabela");
-      const vazio = document.getElementById("estado-vazio");
-      corpo.innerHTML = "";
-
-      const parcelas = obterTodasParcelas(statusNuvem);
-
-      let totalPago = 0;
-      let totalPendente = 0;
-      let qtdPagas = 0;
-      let qtdPendentes = 0;
-
-      parcelas.forEach(item => {
-        if (item.status === "pago") {
-          totalPago += item.valor;
-          qtdPagas++;
-        } else {
-          totalPendente += item.valor;
-          qtdPendentes++;
-        }
-
-        corpo.innerHTML += `
-          <tr>
-            <td style="text-transform:capitalize;">${item.ref}</td>
-            <td>${moneyBR(item.valor)}</td>
-            <td>
-              <span class="badge ${item.status === "pago" ? "badge-pago" : "badge-pendente"}">
-                ${item.status.toUpperCase()}
-              </span>
-            </td>
-            <td>${formatarData(item.dataPagamento)}</td>
-            <td>
-              ${item.comprovante
-                ? `<a class="link" href="${item.comprovante}" target="_blank" rel="noopener noreferrer">Ver comprovante</a>`
-                : "-"}
-            </td>
-          </tr>
-        `;
-      });
-
-      document.getElementById("total-pago").innerText = moneyBR(totalPago);
-      document.getElementById("total-pendente").innerText = moneyBR(totalPendente);
-      document.getElementById("qtd-pagas").innerText = String(qtdPagas);
-      document.getElementById("qtd-pendentes").innerText = String(qtdPendentes);
-
-      vazio.style.display = parcelas.length ? "none" : "block";
-    }
-
-    db.ref("pensao").on("value", (snapshot) => {
-      renderizar(snapshot.val() || {});
     });
-  </script>
+    lista.sort((a, b) => new Date(b.ano, b.mi) - new Date(a.ano, a.mi));
+    return lista;
+  }
+
+  function setFiltro(s) {
+    filtroStatus = s;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    aplicarFiltros();
+  }
+
+  function aplicarFiltros() {
+    const busca = document.getElementById('search').value.toLowerCase().trim();
+    const anoFiltro = document.getElementById('filtro-ano').value;
+    let lista = todasParcelas;
+    if (filtroStatus !== 'todos') lista = lista.filter(p => p.status === filtroStatus);
+    if (anoFiltro) lista = lista.filter(p => String(p.ano) === anoFiltro);
+    if (busca) lista = lista.filter(p => p.ref.toLowerCase().includes(busca));
+    renderTabela(lista);
+  }
+
+  function renderTabela(lista) {
+    const corpo = document.getElementById('corpo-tabela');
+    const vazio = document.getElementById('estado-vazio');
+    const count = document.getElementById('table-count');
+    corpo.innerHTML = '';
+    if (!lista.length) { vazio.style.display = 'block'; count.innerText = ''; return; }
+    vazio.style.display = 'none';
+    count.innerText = `${lista.length} parcela${lista.length !== 1 ? 's' : ''}`;
+    lista.forEach(item => {
+      const pago = item.status === 'pago';
+      corpo.innerHTML += `
+        <tr>
+          <td style="text-transform:capitalize; font-weight:600;">${item.ref}</td>
+          <td style="font-weight:700;">${moneyBR(item.valor)}</td>
+          <td><span class="badge badge-${item.status}">${item.status.toUpperCase()}</span></td>
+          <td style="color:var(--muted);">${formatarData(item.dataPagamento)}</td>
+          <td>${item.comprovante
+            ? `<a class="link-comp" href="${item.comprovante}" target="_blank" rel="noopener">Ver comprovante</a>`
+            : '<span style="color:var(--muted);font-size:.8rem;">—</span>'}</td>
+        </tr>`;
+    });
+  }
+
+  function renderTimeline(parcelas) {
+    const pagos = parcelas.filter(p => p.status === 'pago')
+      .sort((a, b) => new Date(b.dataPagamento) - new Date(a.dataPagamento))
+      .slice(0, 8);
+    const list = document.getElementById('timeline-list');
+    if (!pagos.length) { list.innerHTML = '<span style="color:var(--muted);font-size:.82rem;">Nenhum pagamento registrado.</span>'; return; }
+    list.innerHTML = pagos.map(p => `
+      <div class="tl-item">
+        <div class="tl-dot pago"></div>
+        <div class="tl-text">
+          <strong style="text-transform:capitalize;">${p.ref}</strong>
+          <span>${moneyBR(p.valor)} · ${formatarData(p.dataPagamento)}</span>
+        </div>
+      </div>`).join('');
+  }
+
+  function renderChart(parcelas) {
+    const anos = [...new Set(parcelas.map(p => p.ano))].sort();
+    const pagoPorAno = anos.map(a => parcelas.filter(p => p.ano === a && p.status === 'pago').reduce((s, p) => s + p.valor, 0));
+    const pendPorAno = anos.map(a => parcelas.filter(p => p.ano === a && p.status !== 'pago').reduce((s, p) => s + p.valor, 0));
+    if (chartAnual) chartAnual.destroy();
+    chartAnual = new Chart(document.getElementById('chart-anual'), {
+      type: 'bar',
+      data: {
+        labels: anos.map(String),
+        datasets: [
+          { label: 'Pago', data: pagoPorAno, backgroundColor: '#bbf7d0', borderColor: '#16a34a', borderWidth: 1.5, borderRadius: 5 },
+          { label: 'Pendente', data: pendPorAno, backgroundColor: '#fecaca', borderColor: '#dc2626', borderWidth: 1.5, borderRadius: 5 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 12 } } },
+          y: {
+            grid: { color: '#f1f5f9' },
+            ticks: {
+              font: { size: 11 },
+              callback: v => `R$ ${(v/1).toLocaleString('pt-BR',{minimumFractionDigits:0})}`
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function preencherFiltroAno(parcelas) {
+    const sel = document.getElementById('filtro-ano');
+    const anos = [...new Set(parcelas.map(p => p.ano))].sort();
+    sel.innerHTML = '<option value="">Todos os anos</option>' +
+      anos.map(a => `<option value="${a}">${a}</option>`).join('');
+  }
+
+  function renderizar(nuvem = {}) {
+    todasParcelas = obterTodasParcelas(nuvem);
+    const total = todasParcelas.length;
+    const pagas = todasParcelas.filter(p => p.status === 'pago');
+    const pendentes = todasParcelas.filter(p => p.status !== 'pago');
+    const totalPago = pagas.reduce((s, p) => s + p.valor, 0);
+    const totalPend = pendentes.reduce((s, p) => s + p.valor, 0);
+    const perc = total ? Math.round((pagas.length / total) * 100) : 0;
+
+    document.getElementById('total-pago').innerText = moneyBR(totalPago);
+    document.getElementById('total-pendente').innerText = moneyBR(totalPend);
+    document.getElementById('total-geral').innerText = moneyBR(totalPago + totalPend);
+    document.getElementById('perc-pago').innerText = `${perc}%`;
+    document.getElementById('sub-pagas').innerText = `${pagas.length} parcela${pagas.length !== 1 ? 's' : ''}`;
+    document.getElementById('sub-pendentes').innerText = `${pendentes.length} parcela${pendentes.length !== 1 ? 's' : ''}`;
+    document.getElementById('sub-total').innerText = `${total} parcelas no total`;
+    document.getElementById('prog-fill').style.width = perc + '%';
+    document.getElementById('prog-label').innerText = `${pagas.length} de ${total} pagas`;
+    const ult = pagas.sort((a,b) => new Date(b.dataPagamento)-new Date(a.dataPagamento))[0];
+    document.getElementById('prog-right').innerText = ult
+      ? `Último pagamento: ${ult.ref}`
+      : 'Nenhum pagamento registrado';
+
+    preencherFiltroAno(todasParcelas);
+    aplicarFiltros();
+    renderTimeline(todasParcelas);
+    renderChart(todasParcelas);
+  }
+
+  db.ref('pensao').on('value', snap => renderizar(snap.val() || {}));
+</script>
 </body>
 </html>
