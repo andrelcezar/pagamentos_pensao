@@ -4,1300 +4,1263 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Controle de Pensão</title>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-storage-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-
     <style>
         :root {
-            --bg: #0d0f14;
-            --surface: #161a23;
-            --surface2: #1e2330;
-            --border: #2a2f3d;
-            --border2: #353b4d;
-            --text: #e8eaf0;
-            --text-muted: #6b7280;
-            --text-dim: #9ca3af;
-            --accent: #4f8ef7;
-            --accent-dim: rgba(79,142,247,0.12);
-            --accent-glow: rgba(79,142,247,0.3);
-            --success: #22c55e;
-            --success-dim: rgba(34,197,94,0.12);
-            --danger: #f87171;
-            --danger-dim: rgba(248,113,113,0.12);
-            --warning: #fbbf24;
-            --warning-dim: rgba(251,191,36,0.12);
-            --blue: #60a5fa;
-            --radius: 12px;
-            --radius-sm: 8px;
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-
-        body {
-            font-family: 'DM Sans', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
-            padding: 24px 16px 60px;
-        }
-
-        /* ── Overlay ── */
-        #overlay {
-            display: none;
-            position: fixed; inset: 0;
-            background: rgba(0,0,0,0.75);
-            backdrop-filter: blur(4px);
-            z-index: 9999;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 16px;
-        }
-        #overlay.show { display: flex; }
-        .spinner {
-            width: 36px; height: 36px;
-            border: 3px solid rgba(255,255,255,0.1);
-            border-top-color: var(--accent);
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-        #overlay-text {
-            font-size: 0.85rem;
-            color: var(--text-dim);
-            letter-spacing: 0.02em;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        /* ── Layout ── */
-        .container { max-width: 960px; margin: 0 auto; }
-
-        /* ── Header ── */
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 32px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid var(--border);
-        }
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        .header-icon {
-            width: 36px; height: 36px;
-            background: var(--accent-dim);
-            border: 1px solid var(--accent-glow);
-            border-radius: 10px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 16px;
-        }
-        .header-title {
-            font-size: 0.7rem;
-            font-weight: 600;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-            color: var(--text-muted);
-        }
-        .header-subtitle {
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--text);
-        }
-        #progresso {
-            font-family: 'DM Mono', monospace;
-            font-size: 0.78rem;
-            color: var(--text-muted);
-            background: var(--surface2);
-            border: 1px solid var(--border);
-            border-radius: 999px;
-            padding: 5px 14px;
-        }
-
-        /* ── Cards ── */
-        .card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 22px;
-            margin-bottom: 16px;
-            transition: border-color 0.2s;
-        }
-        .card:hover { border-color: var(--border2); }
-        .card-title {
-            font-size: 0.72rem;
-            font-weight: 600;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            margin-bottom: 14px;
-        }
-
-        /* ── Stat card ── */
-        .stat-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 24px;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-        }
-        .stat-label {
-            font-size: 0.7rem;
-            font-weight: 600;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            margin-bottom: 8px;
-        }
-        .stat-val {
-            font-family: 'DM Mono', monospace;
-            font-size: 2.4rem;
-            font-weight: 500;
-            color: var(--danger);
-            letter-spacing: -0.02em;
-            line-height: 1;
-        }
-        .stat-icon {
-            width: 52px; height: 52px;
-            border-radius: 14px;
-            background: var(--danger-dim);
-            border: 1px solid rgba(248,113,113,0.2);
-            display: flex; align-items: center; justify-content: center;
-            font-size: 22px;
-            flex-shrink: 0;
-        }
-
-        /* ── Toggle / Checkbox ── */
-        .toggle-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 12px;
-        }
-        .toggle-label {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            cursor: pointer;
-        }
-        .toggle-switch {
-            position: relative;
-            width: 42px; height: 24px;
-            flex-shrink: 0;
-        }
-        .toggle-switch input { display: none; }
-        .toggle-track {
-            position: absolute; inset: 0;
-            background: var(--surface2);
-            border: 1px solid var(--border2);
-            border-radius: 999px;
-            transition: 0.2s;
-        }
-        .toggle-thumb {
-            position: absolute;
-            top: 3px; left: 3px;
-            width: 16px; height: 16px;
-            background: var(--text-muted);
-            border-radius: 50%;
-            transition: 0.2s;
-        }
-        #check-desempregado:checked ~ .toggle-track { background: var(--warning-dim); border-color: var(--warning); }
-        #check-desempregado:checked ~ .toggle-thumb { transform: translateX(18px); background: var(--warning); }
-        .toggle-text {
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-        .badge-sm {
-            font-family: 'DM Mono', monospace;
-            font-size: 0.72rem;
-            padding: 4px 10px;
-            border-radius: 999px;
-            background: var(--accent-dim);
-            border: 1px solid var(--accent-glow);
-            color: var(--blue);
-            white-space: nowrap;
-        }
-        .hint {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            line-height: 1.6;
-            margin-top: 10px;
-        }
-        .hint strong { color: var(--text-dim); font-weight: 500; }
-
-        /* ── Upload grid ── */
-        .upload-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 18px;
-        }
-        @media (max-width: 640px) { .upload-grid { grid-template-columns: 1fr; } }
-
-        .upload-box {
-            background: var(--surface2);
-            border: 1px dashed var(--border2);
-            border-radius: var(--radius-sm);
-            padding: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            transition: border-color 0.2s;
-        }
-        .upload-box:hover { border-color: var(--accent-glow); }
-        .upload-label {
-            font-size: 0.78rem;
-            font-weight: 600;
-            color: var(--text-dim);
-            letter-spacing: 0.03em;
-        }
-        .file-input-wrapper {
-            position: relative;
-        }
-        .file-input-wrapper input[type="file"] {
-            position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%;
-        }
-        .file-input-fake {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 9px 12px;
-            border-radius: var(--radius-sm);
-            border: 1px solid var(--border2);
-            background: var(--surface);
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            cursor: pointer;
-            transition: border-color 0.2s, color 0.2s;
-        }
-        .file-input-fake:hover { border-color: var(--accent-glow); color: var(--text); }
-
-        .info-box {
-            background: var(--surface2);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
-            padding: 14px;
-        }
-        .info-box-title {
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: var(--text-dim);
-            margin-bottom: 8px;
-        }
-
-        /* ── Buttons ── */
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            padding: 9px 16px;
-            border-radius: var(--radius-sm);
-            border: none;
-            font-family: 'DM Sans', sans-serif;
-            font-size: 0.83rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: opacity 0.15s, transform 0.1s;
-            width: 100%;
-        }
-        .btn:active { transform: scale(0.98); }
-        .btn-accent { background: var(--accent); color: #fff; }
-        .btn-accent:hover { opacity: 0.9; }
-        .btn-success { background: var(--success); color: #fff; }
-        .btn-success:hover { opacity: 0.9; }
-        .btn-warning { background: var(--warning); color: #000; font-weight: 700; }
-        .btn-warning:hover { opacity: 0.9; }
-        .btn-blue { background: #3b82f6; color: #fff; }
-        .btn-blue:hover { opacity: 0.9; }
-        .btn-outline {
-            background: transparent;
-            border: 1px solid var(--border2);
-            color: var(--text-dim);
-        }
-        .btn-outline:hover { border-color: var(--accent-glow); color: var(--text); }
-
-        /* ── CTPS card ── */
-        .ctps-card {
-            border-left: 3px solid #3b82f6;
-        }
-        .ctps-title {
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: #60a5fa;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        /* ── Simulador ── */
-        .lote-row {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .lote-input {
-            width: 64px;
-            padding: 9px 12px;
-            border-radius: var(--radius-sm);
-            border: 1px solid var(--border2);
-            background: var(--surface2);
-            color: var(--text);
-            font-family: 'DM Mono', monospace;
-            font-size: 0.9rem;
-            font-weight: 500;
-            text-align: center;
-        }
-        .lote-input:focus { outline: none; border-color: var(--accent-glow); }
-        #box-lote {
-            display: none;
-            margin-top: 18px;
-            padding: 18px;
-            background: var(--surface2);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
-        }
-        #total-lote-info {
-            font-family: 'DM Mono', monospace;
-            font-size: 1.4rem;
-            font-weight: 500;
-            color: var(--success);
-            margin-bottom: 14px;
-        }
-        .lote-label {
-            font-size: 0.68rem;
-            font-weight: 700;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            margin-bottom: 10px;
-        }
-        .mes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; margin-bottom: 18px; }
-        .mes-tag {
-            background: var(--success-dim);
-            border: 1px solid rgba(34,197,94,0.2);
-            border-radius: var(--radius-sm);
-            padding: 9px 10px;
-            text-align: center;
-        }
-        .mes-tag strong { display: block; font-size: 0.8rem; font-weight: 600; color: var(--success); text-transform: capitalize; }
-        .mes-tag span { display: block; font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
-
-        /* ── Table ── */
-        .table-wrap {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            overflow: hidden;
-        }
-        .table-header {
-            padding: 16px 20px;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        .table-title {
-            font-size: 0.72rem;
-            font-weight: 700;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            color: var(--text-muted);
-        }
-        table { width: 100%; border-collapse: collapse; }
-        thead th {
-            padding: 11px 20px;
-            text-align: left;
-            font-size: 0.67rem;
-            font-weight: 700;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            background: var(--surface2);
-            border-bottom: 1px solid var(--border);
-        }
-        tbody td {
-            padding: 13px 20px;
-            font-size: 0.875rem;
-            border-bottom: 1px solid var(--border);
-        }
-        tbody tr:last-child td { border-bottom: none; }
-        tbody tr { transition: background 0.15s; }
-        tbody tr:hover { background: var(--surface2); }
-
-        .status-pago {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            padding: 4px 10px;
-            border-radius: 999px;
-            font-size: 0.72rem;
-            font-weight: 700;
-            letter-spacing: 0.06em;
-            background: var(--success-dim);
-            color: var(--success);
-            border: 1px solid rgba(34,197,94,0.2);
-        }
-        .status-pago::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
-        .status-pendente {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            padding: 4px 10px;
-            border-radius: 999px;
-            font-size: 0.72rem;
-            font-weight: 700;
-            letter-spacing: 0.06em;
-            background: var(--danger-dim);
-            color: var(--danger);
-            border: 1px solid rgba(248,113,113,0.2);
-        }
-        .status-pendente::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--danger); animation: blink 2s ease-in-out infinite; }
-        @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
-
-        .mes-text { font-weight: 500; text-transform: capitalize; }
-        .val-text { font-family: 'DM Mono', monospace; font-size: 0.85rem; color: var(--text-dim); }
-
-        .action-file-wrap {
-            position: relative;
-            display: inline-block;
-        }
-        .action-file-wrap input[type="file"] {
-            position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%;
-        }
-        .action-file-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            padding: 5px 10px;
-            border-radius: 6px;
-            font-size: 0.72rem;
-            font-weight: 600;
-            background: var(--accent-dim);
-            color: var(--accent);
-            border: 1px solid var(--accent-glow);
-            cursor: pointer;
-            transition: background 0.15s;
-        }
-        .action-file-btn:hover { background: rgba(79,142,247,0.2); }
-        .action-revoke {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 5px 10px;
-            border-radius: 6px;
-            font-size: 0.72rem;
-            font-weight: 600;
-            background: var(--danger-dim);
-            color: var(--danger);
-            border: 1px solid rgba(248,113,113,0.2);
-            cursor: pointer;
-            transition: background 0.15s;
-        }
-        .action-revoke:hover { background: rgba(248,113,113,0.2); }
-
-
-        /* ── Ação Judicial card ── */
-        .acao-card {
-            border-left: 3px solid #a78bfa;
-        }
-        .acao-title {
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: #c4b5fd;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .btn-acao { background: #7c3aed; color: #fff; }
-        .btn-acao:hover { opacity: 0.9; }
-        #acao-resultado {
-            display: none;
-            margin-top: 14px;
-            padding: 14px;
-            background: rgba(124,58,237,0.08);
-            border: 1px solid rgba(124,58,237,0.25);
-            border-radius: var(--radius-sm);
-        }
-        #acao-resultado .res-title {
-            font-size: 0.8rem;
-            font-weight: 700;
-            color: #c4b5fd;
-            margin-bottom: 6px;
-        }
-        #acao-info {
-            font-size: 0.78rem;
-            color: #ddd6fe;
-            line-height: 1.7;
-        }
-        #acao-info a {
-            color: #a78bfa;
-            text-decoration: underline;
-        }
-        /* ── CTPS resultado ── */
-        #ctps-resultado {
-            display: none;
-            margin-top: 14px;
-            padding: 14px;
-            background: rgba(59,130,246,0.08);
-            border: 1px solid rgba(59,130,246,0.25);
-            border-radius: var(--radius-sm);
-        }
-        #ctps-resultado .res-title {
-            font-size: 0.8rem;
-            font-weight: 700;
-            color: #60a5fa;
-            margin-bottom: 6px;
-        }
-        #ctps-info {
-            font-size: 0.78rem;
-            color: #93c5fd;
-            line-height: 1.7;
-        }
-
-        /* ── Divider ── */
-        .section-divider {
-            height: 1px;
-            background: var(--border);
-            margin: 4px 0 16px;
-        }
+            --primary:#475569; --success:#10b981; --danger:#ef4444;
+            --bg:#f8fafc; --card:#ffffff; --text:#1e293b; --warning:#f59e0b;
+            --border:#e2e8f0; --purple:#7c3aed;
+        }
+        *{box-sizing:border-box;}
+        body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);margin:0;padding:20px;}
+        .container{max-width:1000px;margin:auto;}
+        .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:25px;border-bottom:1px solid var(--border);padding-bottom:12px;gap:12px;flex-wrap:wrap;}
+        .card{background:var(--card);border-radius:12px;padding:20px;box-shadow:0 4px 6px -1px rgba(0,0,0,.07);border:1px solid var(--border);margin-bottom:20px;}
+        .card-title{font-weight:700;margin-bottom:14px;font-size:.95rem;display:flex;align-items:center;gap:8px;}
+        .btn{padding:10px 18px;border-radius:8px;border:none;font-weight:700;cursor:pointer;font-size:.82rem;transition:opacity .15s;}
+        .btn:hover{opacity:.85;}
+        .btn-primary{background:var(--primary);color:#fff;}
+        .btn-success{background:var(--success);color:#fff;width:100%;margin-top:15px;}
+        .btn-warning{background:var(--warning);color:#fff;}
+        .btn-danger{background:var(--danger);color:#fff;}
+        .btn-purple{background:var(--purple);color:#fff;}
+        .btn-sm{padding:6px 12px;font-size:.75rem;}
+        .subgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+        .field{display:flex;flex-direction:column;gap:6px;}
+        .field label{font-size:.8rem;font-weight:700;color:#374151;}
+        .field input[type="file"],.field input[type="date"],.field input[type="number"],.field input[type="text"]{
+            padding:8px 10px;border-radius:8px;border:1px solid #d1d5db;background:#fff;font-size:.84rem;width:100%;
+        }
+        .hint{font-size:.76rem;color:#64748b;line-height:1.55;}
+        .badge{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700;}
+        .badge-blue{background:#eef2ff;color:#3730a3;}
+        .badge-green{background:#f0fdf4;color:#166534;}
+        .badge-red{background:#fff1f2;color:#be123c;}
+        .badge-gray{background:#f1f5f9;color:#475569;}
+        .badge-purple{background:#f5f3ff;color:#5b21b6;}
+        .badge-yellow{background:#fffbeb;color:#92400e;}
+        .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;}
+        .stat-box{background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+        .stat-label{font-size:.62rem;font-weight:700;text-transform:uppercase;color:#94a3b8;margin-bottom:4px;}
+        .stat-val{font-size:1.5rem;font-weight:800;}
+        .stat-val.red{color:var(--danger);}
+        .stat-val.blue{color:#3b82f6;}
+        .stat-val.green{color:var(--success);}
+        .stat-val.purple{color:var(--purple);}
+        /* status box */
+        .info-box{padding:12px 14px;border-radius:8px;background:#f8fafc;border:1px solid var(--border);font-size:.83rem;line-height:1.6;}
+        /* table */
+        .table-wrap{border-radius:12px;border:1px solid var(--border);overflow:hidden;margin-bottom:20px;}
+        table{width:100%;border-collapse:collapse;}
+        th{background:#f1f5f9;padding:10px 14px;text-align:left;font-size:.67rem;text-transform:uppercase;color:#64748b;}
+        td{padding:9px 14px;border-bottom:1px solid #f8fafc;font-size:.85rem;}
+        tr:last-child td{border-bottom:none;}
+        tr.row-desemprego td{background:#fffbeb;}
+        tr.row-empregado td{background:#f0fdf4;}
+        .section-sep td{background:#e2e8f0!important;padding:6px 14px;font-size:.67rem;font-weight:800;text-transform:uppercase;color:#475569;letter-spacing:.05em;}
+        /* overlay */
+        #overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.78);z-index:999;flex-direction:column;justify-content:center;align-items:center;color:#fff;}
+        .spinner{border:3px solid rgba(255,255,255,.2);border-top:3px solid #fff;border-radius:50%;width:32px;height:32px;animation:spin 1s linear infinite;}
+        .grid-meses{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin:12px 0;}
+        .mes-tag{background:#f0fdf4;padding:8px;border-radius:6px;border:1px solid #bbf7d0;text-align:center;}
+        .mes-tag span{display:block;font-size:.63rem;font-weight:800;color:#166534;}
+        /* oficio destaque */
+        .oficio-destaque{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;}
+        .oficio-item{background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:10px 14px;flex:1;min-width:120px;}
+        .oficio-item .oi-label{font-size:.65rem;font-weight:700;color:#6d28d9;text-transform:uppercase;}
+        .oficio-item .oi-val{font-size:1.1rem;font-weight:800;color:#4c1d95;margin-top:2px;}
+        @keyframes spin{to{transform:rotate(360deg);}}
+        @media(max-width:640px){.subgrid{grid-template-columns:1fr;}}
     </style>
 </head>
 <body>
-
-<div id="overlay">
-    <div class="spinner"></div>
-    <div id="overlay-text">Processando arquivo...</div>
-</div>
+<div id="overlay"><div class="spinner"></div><p style="margin-top:15px;">Processando...</p></div>
 
 <div class="container">
 
-    <!-- Header -->
-    <div class="header">
-        <div class="header-left">
-            <div class="header-icon">⚖️</div>
-            <div>
-                <div class="header-title">Painel de Controle</div>
-                <div class="header-subtitle">Controle de Pensão</div>
-            </div>
-        </div>
-        <div id="progresso"></div>
-    </div>
-
-    <!-- Total em Aberto -->
-    <div class="stat-card">
-        <div>
-            <div class="stat-label">Total em aberto</div>
-            <div class="stat-val" id="total-geral">R$ 0,00</div>
-        </div>
-        <div class="stat-icon">💸</div>
-    </div>
-
-    <!-- Configuração -->
-    <div class="card">
-        <div class="card-title">Configuração de Cálculo</div>
-        <div class="toggle-row">
-            <label class="toggle-label" for="check-desempregado">
-                <div class="toggle-switch">
-                    <input type="checkbox" id="check-desempregado" onchange="toggleDesempregado()">
-                    <div class="toggle-track"></div>
-                    <div class="toggle-thumb"></div>
-                </div>
-                <span class="toggle-text">Desempregado</span>
-            </label>
-            <span class="badge-sm">Salário mínimo: R$ 1.621,00</span>
-        </div>
-        <p class="hint">
-            Quando <strong>Desempregado</strong> está ativo, a pensão é calculada com base em <strong>30% do salário mínimo atual</strong>.
-        </p>
-    </div>
-
-    <!-- Holerite -->
-    <div class="card">
-        <div class="card-title">Upload de Holerite</div>
-        <div class="upload-grid">
-            <div class="upload-box">
-                <div class="upload-label">Enviar holerite (PDF ou imagem)</div>
-                <div class="file-input-wrapper">
-                    <input type="file" id="upload-holerite" accept="image/*,.pdf">
-                    <div class="file-input-fake">📎 Selecionar arquivo</div>
-                </div>
-                <button class="btn btn-warning" onclick="processarHoleriteGlobal()">Ler holerite e atualizar parcela</button>
-            </div>
-            <div class="info-box">
-                <div class="info-box-title">O que este envio faz</div>
-                <p class="hint" style="margin-top:0">
-                    O sistema identifica a competência do holerite e o valor de <strong>Pensão Judicial</strong>. 
-                    Se a parcela ainda não existir, ela é criada automaticamente. 
-                    Se empregado, usa 15% do salário; se desempregado, usa 30% do salário mínimo.
-                </p>
-            </div>
-        </div>
-    </div>
-
-    <!-- CTPS -->
-    <div class="card ctps-card">
-        <div class="ctps-title">📋 Carteira de Trabalho Digital (CTPS)</div>
-        <p class="hint" style="margin-bottom:16px">
-            Envie o PDF da <strong>Carteira de Trabalho Digital</strong>. O sistema extrai automaticamente a data de início no novo emprego e o salário contratual, recalculando todas as parcelas a partir daquele mês.
-        </p>
-        <div class="upload-grid">
-            <div class="upload-box">
-                <div class="upload-label">PDF da Carteira de Trabalho Digital</div>
-                <div class="file-input-wrapper">
-                    <input type="file" id="upload-ctps" accept=".pdf">
-                    <div class="file-input-fake">📎 Selecionar PDF</div>
-                </div>
-                <button class="btn btn-blue" onclick="processarCTPS()">Ler CTPS e Recalcular Pensão</button>
-            </div>
-            <div class="info-box">
-                <div class="info-box-title">O que este envio faz</div>
-                <p class="hint" style="margin-top:0">
-                    O sistema identifica o <strong>vínculo empregatício mais recente</strong> da CTPS (data de admissão e salário). A partir do mês de admissão, as parcelas pendentes são recalculadas como <strong>15% do salário contratual</strong>. O status de desempregado é desmarcado automaticamente.
-                </p>
-            </div>
-        </div>
-        <div id="ctps-resultado">
-            <div class="res-title">✅ CTPS Processada</div>
-            <div id="ctps-info"></div>
-        </div>
-    </div>
-
-
-    <!-- Ação Judicial -->
-    <div class="card acao-card">
-        <div class="acao-title">⚖️ Ação Judicial</div>
-        <p class="hint" style="margin-bottom:16px">
-            Faça o upload do PDF da <strong>ação judicial de pensão alimentícia</strong>. O documento fica armazenado com segurança e pode ser consultado a qualquer momento.
-        </p>
-        <div class="upload-grid">
-            <div class="upload-box">
-                <div class="upload-label">PDF da Ação Judicial</div>
-                <div class="file-input-wrapper">
-                    <input type="file" id="upload-acao" accept=".pdf">
-                    <div class="file-input-fake">📎 Selecionar PDF</div>
-                </div>
-                <button class="btn btn-acao" onclick="uploadAcaoJudicial()">Enviar Ação Judicial</button>
-            </div>
-            <div class="info-box">
-                <div class="info-box-title">Documento armazenado</div>
-                <p class="hint" style="margin-top:0">
-                    O PDF é salvo com segurança no armazenamento em nuvem. Apenas um documento é mantido como referência principal — novos uploads substituem o anterior.
-                </p>
-            </div>
-        </div>
-        <div id="acao-resultado">
-            <div class="res-title" id="acao-res-title"></div>
-            <div id="acao-info"></div>
-        </div>
-    </div>
-
-    <!-- Simulador de Lote -->
-    <div class="card">
-        <div class="card-title">Simulador de Lote</div>
-        <div class="lote-row">
-            <input type="number" id="input-qtd" value="8" min="1" class="lote-input">
-            <button class="btn btn-accent" style="width:auto; padding: 9px 20px;" onclick="simularLote()">Calcular Selecionados</button>
-        </div>
-        <div id="box-lote">
-            <div id="total-lote-info"></div>
-            <div class="lote-label">Meses que serão marcados como pagos:</div>
-            <div id="lista-meses-detalhe" class="mes-grid"></div>
-            <input type="file" id="upload-lote" style="display:none" onchange="processarLote(this)" accept="image/*,.pdf">
-            <button class="btn btn-success" onclick="document.getElementById('upload-lote').click()">✓ Validar e Quitar Todos</button>
-        </div>
-    </div>
-
-    <!-- Tabela de Parcelas -->
-    <div class="table-wrap">
-        <div class="table-header">
-            <span class="table-title">Histórico de Parcelas</span>
-        </div>
-        <table>
-            <thead>
-                <tr>
-                    <th>Mês / Ano</th>
-                    <th>Valor</th>
-                    <th>Status</th>
-                    <th>Ação</th>
-                </tr>
-            </thead>
-            <tbody id="corpo-tabela"></tbody>
-        </table>
-    </div>
-
+<!-- HEADER -->
+<div class="header">
+    <div style="font-weight:800;color:var(--primary);font-size:1.05rem;">CONTROLE DE PENSÃO</div>
+    <div id="progresso" style="font-size:.74rem;font-weight:700;color:#64748b;"></div>
 </div>
 
+<!-- RESUMO -->
+<div class="card">
+    <div class="card-title">📊 Resumo</div>
+    <div class="stat-grid">
+        <div class="stat-box">
+            <div class="stat-label">Desconto aplicado</div>
+            <div class="stat-val purple" id="stat-pct">–%</div>
+            <div class="hint" style="margin-top:4px;" id="stat-pct-label">Aguardando ofício</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Atrasado (desemprego)</div>
+            <div class="stat-val red" id="total-atrasado">R$ 0,00</div>
+            <div class="hint" style="margin-top:4px;" id="periodo-atrasado">–</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Em aberto (empregado)</div>
+            <div class="stat-val blue" id="total-empregado">R$ 0,00</div>
+            <div class="hint" style="margin-top:4px;" id="periodo-empregado">–</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Total geral em aberto</div>
+            <div class="stat-val red" id="total-geral">R$ 0,00</div>
+            <div class="hint" style="margin-top:4px;" id="total-pagos-label"></div>
+        </div>
+    </div>
+</div>
+
+<!-- OFÍCIO DE PENSÃO -->
+<div class="card" style="border-left:4px solid var(--purple);">
+    <div class="card-title">⚖️ Ofício de Pensão Alimentícia</div>
+    <div class="subgrid">
+        <div>
+            <div id="oficio-status" class="info-box" style="margin-bottom:12px;">Carregando...</div>
+            <div class="field">
+                <label>Enviar ofício (PDF ou imagem)</label>
+                <input type="file" id="upload-oficio" accept=".pdf,image/*">
+            </div>
+            <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+                <button class="btn btn-purple" onclick="processarOficio()">📄 Ler ofício automaticamente</button>
+                <button class="btn btn-primary btn-sm" onclick="toggleOficioManual()">Editar manualmente</button>
+            </div>
+            <!-- Edição manual -->
+            <div id="oficio-manual" style="display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">
+                <div class="field" style="margin-bottom:8px;">
+                    <label>% de desconto (ex: 30)</label>
+                    <input type="number" id="manual-pct" min="1" max="100" placeholder="30" style="width:100px;">
+                </div>
+                <div class="field" style="margin-bottom:8px;">
+                    <label>Número do processo</label>
+                    <input type="text" id="manual-processo" placeholder="0000000-00.0000.0.00.0000">
+                </div>
+                <div class="field" style="margin-bottom:10px;">
+                    <label>Juízo / Vara</label>
+                    <input type="text" id="manual-juizo" placeholder="Ex: 1ª Vara de Família">
+                </div>
+                <button class="btn btn-success btn-sm" style="width:auto;margin-top:0;" onclick="salvarOficioManual()">Salvar</button>
+            </div>
+        </div>
+        <div class="hint">
+            <strong>O que o sistema extrai do ofício:</strong><br><br>
+            ✔ <strong>Percentual de desconto</strong> — usado automaticamente em todos os cálculos<br>
+            ✔ <strong>Número do processo</strong><br>
+            ✔ <strong>Juízo / Vara</strong><br><br>
+            O % extraído substitui o valor fixo de 30% e passa a ser o padrão para todas as parcelas do período empregado.<br><br>
+            No período de desemprego o cálculo permanece em <strong>30% do salário mínimo</strong>, conforme jurisprudência padrão.
+        </div>
+    </div>
+</div>
+
+<!-- CTPS -->
+<div class="card" style="border-left:4px solid var(--success);">
+    <div class="card-title">🪪 CTPS Digital — Data de Admissão</div>
+    <div class="subgrid">
+        <div>
+            <div id="ctps-status" class="info-box" style="margin-bottom:12px;">Carregando...</div>
+            <div class="field">
+                <label>Enviar CTPS Digital (PDF)</label>
+                <input type="file" id="upload-ctps" accept=".pdf">
+            </div>
+            <div id="ctps-extracao" style="display:none;margin-top:8px;padding:10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:.8rem;"></div>
+            <div class="field" style="margin-top:10px;">
+                <label>Data de admissão <span style="font-weight:400;color:#64748b;">(preenchida automaticamente ou manual)</span></label>
+                <input type="date" id="input-admissao">
+            </div>
+            <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+                <button class="btn btn-success btn-sm" style="width:auto;margin-top:0;" onclick="lerCTPS()">🔍 Extrair data da CTPS</button>
+                <button class="btn btn-primary" style="flex:1;" onclick="salvarCTPS()">Salvar CTPS e admissão</button>
+            </div>
+        </div>
+        <div class="hint">
+            <strong>Extração automática da CTPS:</strong><br><br>
+            Ao clicar em <em>"Extrair data da CTPS"</em>, o sistema lê o PDF via OCR e tenta localizar a data de admissão nos campos:<br><br>
+            • <em>Data de Admissão</em><br>
+            • <em>Admitido em</em><br>
+            • <em>Início do contrato</em><br><br>
+            Verifique e confirme antes de salvar. Após salvar, o sistema recalcula todos os períodos automaticamente.
+        </div>
+    </div>
+</div>
+
+<!-- HOLERITE -->
+<div class="card">
+    <div class="card-title">🧾 Holerite e Salário Base</div>
+
+    <!-- Salário líquido atual -->
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 16px;margin-bottom:16px;">
+        <div style="font-size:.7rem;font-weight:800;color:#166534;text-transform:uppercase;margin-bottom:8px;">💰 Salário Líquido Atual (base de cálculo)</div>
+        <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+            <div class="field" style="flex:1;min-width:160px;">
+                <label>Salário líquido (R$)</label>
+                <input type="number" id="input-salario-liquido" step="0.01" min="0" placeholder="Ex: 3916.73"
+                    style="font-size:1rem;font-weight:800;color:#065f46;">
+            </div>
+            <div class="field" style="flex:1;min-width:160px;">
+                <label>Aplicar a partir de</label>
+                <input type="month" id="input-salario-inicio" style="font-size:.9rem;">
+            </div>
+            <button class="btn btn-success" style="margin-top:0;width:auto;padding:10px 18px;white-space:nowrap;"
+                onclick="aplicarSalarioLiquido()">
+                Aplicar em todas as parcelas empregado
+            </button>
+        </div>
+        <div id="salario-atual-info" style="font-size:.75rem;color:#166534;margin-top:8px;"></div>
+    </div>
+
+    <div class="subgrid">
+        <div class="field">
+            <label>Enviar holerite (PDF ou imagem)</label>
+            <input type="file" id="upload-holerite" accept="image/*,.pdf">
+            <button class="btn btn-warning" style="margin-top:8px;" onclick="processarHoleriteGlobal()">Ler holerite e atualizar parcela</button>
+        </div>
+        <div class="hint">
+            <strong>Opção 1 — Salário manual:</strong> informe o líquido acima e clique em aplicar. O sistema recalcula todas as parcelas empregado sem holerite.<br><br>
+            <strong>Opção 2 — Holerite (OCR):</strong> lê automaticamente o líquido e atualiza a parcela do mês correspondente.<br><br>
+            <strong>Cálculo:</strong> Salário líquido × % do ofício<br>
+            <em>Ex: R$ 3.916,73 × 20% = R$ 783,35</em>
+        </div>
+    </div>
+</div>
+
+<!-- SIMULADOR DE LOTE -->
+<div class="card">
+    <div class="card-title">📦 Simulador de Lote</div>
+    <div style="display:flex;gap:10px;align-items:center;">
+        <input type="number" id="input-qtd" value="8" min="1" style="width:60px;padding:8px;border-radius:6px;border:1px solid #ddd;text-align:center;font-weight:700;">
+        <button class="btn btn-primary" onclick="simularLote()">Calcular Selecionados</button>
+    </div>
+    <div id="box-lote" style="display:none;margin-top:15px;padding:15px;background:#f8fafc;border:1px solid var(--border);border-radius:10px;">
+        <div id="total-lote-info" style="font-weight:800;color:var(--success);font-size:1.3rem;"></div>
+        <div style="font-size:.7rem;font-weight:700;color:#64748b;margin-top:10px;">ESTES MESES SERÃO MARCADOS COMO PAGOS:</div>
+        <div id="lista-meses-detalhe" class="grid-meses"></div>
+        <input type="file" id="upload-lote" style="display:none" onchange="processarLote(this)" accept="image/*,.pdf">
+        <button class="btn btn-success" onclick="document.getElementById('upload-lote').click()">Validar e Quitar Todos</button>
+    </div>
+</div>
+
+<!-- INICIALIZAR -->
+<div class="card" style="border:1px solid #fecaca;background:#fff5f5;">
+    <div class="card-title" style="color:#b91c1c;">⚠️ Inicializar / Sincronizar Parcelas</div>
+    <div class="hint" style="margin-bottom:12px;">
+        Cria todas as parcelas com base na data de admissão da CTPS e no % do ofício.
+        Parcelas já existentes <strong>não</strong> serão sobrescritas.
+    </div>
+    <button class="btn btn-danger" onclick="inicializarTodasParcelas()">Criar / sincronizar todas as parcelas</button>
+</div>
+
+<!-- TABELA -->
+<div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Mês/Ano</th>
+                <th>Período</th>
+                <th>Salário base</th>
+                <th>Desconto</th>
+                <th>Valor pensão</th>
+                <th>Status</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody id="corpo-tabela"></tbody>
+    </table>
+</div>
+
+</div><!-- /container -->
+
 <script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyCzAXQ4DrPvIIgOdMY-14b8nuyVZN0dU54",
-        authDomain: "pensao-fd881.firebaseapp.com",
-        databaseURL: "https://pensao-fd881-default-rtdb.firebaseio.com",
-        projectId: "pensao-fd881",
-        storageBucket: "pensao-fd881.firebasestorage.app",
-        messagingSenderId: "483959140139",
-        appId: "1:483959140139:web:e08f75dbe8a4ef845a1f6e"
+/* ═══════════════════════════════════════════════════════════════
+   FIREBASE — REST only (funciona em file://)
+═══════════════════════════════════════════════════════════════ */
+const firebaseConfig = {
+    apiKey:"AIzaSyCIQSkyp3qHuTRqWiHHnmVSidt0VDn-90Q",
+    authDomain:"pensao-11739.firebaseapp.com",
+    projectId:"pensao-11739",
+    storageBucket:"pensao-11739.firebasestorage.app",
+    messagingSenderId:"480850656723",
+    appId:"1:480850656723:web:1590397544f2e14bfa0326"
+};
+firebase.initializeApp(firebaseConfig);
+
+const DB_URL  = 'https://pensao-11739-default-rtdb.firebaseio.com';
+const ST_URL  = 'https://firebasestorage.googleapis.com/v0/b/pensao-11739.firebasestorage.app/o';
+
+const db = {
+    get:    async p => { const r=await fetch(`${DB_URL}/${p}.json`); if(!r.ok) throw new Error(`DB ${r.status}`); return r.json(); },
+    patch:  async (p,d) => { const r=await fetch(`${DB_URL}/${p}.json`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}); if(!r.ok) throw new Error(`DB ${r.status}`); },
+    patchRoot: async d => { const r=await fetch(`${DB_URL}/.json`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}); if(!r.ok) throw new Error(`DB ${r.status}`); }
+};
+
+async function uploadFile(path, file) {
+    try {
+        const ep = encodeURIComponent(path);
+        const r  = await fetch(`${ST_URL}/${ep}`,{method:'POST',headers:{'Content-Type':file.type||'application/octet-stream'},body:file});
+        if(!r.ok) throw new Error((await r.json().catch(()=>({}))).error?.message||r.status);
+        const d = await r.json();
+        return `${ST_URL}/${ep}?alt=media&token=${d.downloadTokens}`;
+    } catch(e) { console.warn('Storage upload falhou:',e.message); return null; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ESTADO GLOBAL
+═══════════════════════════════════════════════════════════════ */
+const INICIO_DESEMPREGO = new Date(2024,1,1);
+const SALARIO_MINIMO    = {2024:1412, 2025:1518, 2026:1621};
+const hoje = new Date();
+let parcelasLocais   = [];
+let dataAdmissaoGlobal = null;  // Date|null
+let pctDescontoGlobal  = 30;    // número (ex: 30 = 30%)
+const nomesMeses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+
+/* ═══════════════════════════════════════════════════════════════
+   UTILITÁRIOS
+═══════════════════════════════════════════════════════════════ */
+function overlay(show,txt='Processando...'){
+    const el=document.getElementById('overlay');
+    el.querySelector('p').innerText=txt;
+    el.style.display=show?'flex':'none';
+}
+function moneyBR(v){ return `R$ ${Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}`; }
+function norm(t=''){ return t.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim().toLowerCase(); }
+function buildId(mes,ano){ return `p-${ano}-${mes-1}`; }
+function parseId(id){ const p=id.replace('p-','').split('-'); return {ano:Number(p[0]),mes:Number(p[1])+1}; }
+function salMin(ano){ return SALARIO_MINIMO[ano]||SALARIO_MINIMO[2026]; }
+function valorDesemprego(ano){ return +(salMin(ano)*0.3).toFixed(2); }
+function admissaoPrimeiroDia(){
+    if(!dataAdmissaoGlobal) return null;
+    return new Date(dataAdmissaoGlobal.getFullYear(),dataAdmissaoGlobal.getMonth(),1);
+}
+function dateToLabel(d){ return d.toLocaleString('pt-BR',{month:'long'})+'/'+d.getFullYear(); }
+function parseCurrency(txt){
+    const re=/(?:r\$\s*)?(\d{1,3}(?:\.\d{3})*,\d{2}|\d+[,\.]\d{2})/gi;
+    const v=[]; let m;
+    while((m=re.exec(txt))!==null){ const n=Number(m[1].replace(/\./g,'').replace(',','.')); if(!isNaN(n)) v.push(n); }
+    return v;
+}
+function extrairCompetencia(txt){
+    let m=txt.match(/\b(0?[1-9]|1[0-2])\s*[\/\-]\s*(20\d{2})\b/);
+    if(m) return {mes:Number(m[1]),ano:Number(m[2])};
+    m=txt.match(/\b(20\d{2})\s*[\/\-]\s*(0?[1-9]|1[0-2])\b/);
+    if(m) return {mes:Number(m[2]),ano:Number(m[1])};
+    const tn=norm(txt);
+    for(let i=0;i<nomesMeses.length;i++){
+        const rx=new RegExp(`\\b${nomesMeses[i]}\\s*(?:de)?\\s*(20\\d{2})\\b`,'i');
+        const r=tn.match(rx); if(r) return {mes:i+1,ano:Number(r[1])};
+    }
+    return null;
+}
+function detectarTipo(txt){
+    const t=norm(txt);
+    const sh=['holerite','demonstrativo de pagamento','demonstrativo de salario','vencimentos','descontos','inss','fgts','cargo','empresa','referencia','competencia'].filter(x=>t.includes(x)).length;
+    const sb=['pix','transferencia','comprovante','ted','doc','agencia','conta','autenticacao','neon','nubank','itau','bradesco','caixa','inter','santander'].filter(x=>t.includes(x)).length;
+    if(sh>=2&&sh>=sb) return 'holerite';
+    if(sb>=1) return 'bancario';
+    return 'desconhecido';
+}
+
+/* ─── OCR ──────────────────────────────────────────────────────── */
+async function pdfToImage(file){
+    const pdf=await pdfjsLib.getDocument(await file.arrayBuffer()).promise;
+    const page=await pdf.getPage(1);
+    const vp=page.getViewport({scale:2.5});
+    const c=document.createElement('canvas');
+    c.height=vp.height; c.width=vp.width;
+    await page.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
+    return c.toDataURL();
+}
+async function lerTexto(file){
+    const src=file.type==='application/pdf'?await pdfToImage(file):URL.createObjectURL(file);
+    try{ const {data:{text}}=await Tesseract.recognize(src,'por'); return text; }
+    finally{ if(file.type!=='application/pdf') URL.revokeObjectURL(src); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   OFÍCIO DE PENSÃO
+═══════════════════════════════════════════════════════════════ */
+function extrairDadosOficio(txt){
+    const t = norm(txt);
+
+    // ── Percentual ──────────────────────────────────────────────
+    let pct = null;
+    // padrões: "30%", "30 %", "30 por cento", "trinta por cento"
+    const porcentoRegex = [
+        /(\d{1,3})\s*%/,
+        /(\d{1,3})\s+por\s+cento/i,
+    ];
+    const numPorExtenso = {
+        'dez':10,'quinze':15,'vinte':20,'vinte e cinco':25,
+        'trinta':30,'trinta e tres':33,'quarenta':40,'cinquenta':50
     };
-    
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const storage = firebase.storage();
+    for(const rx of porcentoRegex){
+        const m=t.match(rx); if(m){ pct=Number(m[1]); break; }
+    }
+    if(!pct){
+        for(const [palavras,val] of Object.entries(numPorExtenso)){
+            if(t.includes(palavras+' por cento')||t.includes(palavras+'%')){ pct=val; break; }
+        }
+    }
+    // contexto: busca próximo a palavras-chave
+    if(!pct){
+        const keywords=['desconto','pensao','alimentos','percentual','percentagem','corresponde a'];
+        for(const kw of keywords){
+            const idx=t.indexOf(kw);
+            if(idx===-1) continue;
+            const trecho=t.substring(idx,idx+120);
+            const m=trecho.match(/(\d{1,3})\s*%/)||trecho.match(/(\d{1,3})\s+por\s+cento/);
+            if(m){ pct=Number(m[1]); break; }
+        }
+    }
 
-    const dataInicio = new Date(2024, 2, 1);
-    const hoje = new Date();
-    const SALARIO_MINIMO_ATUAL = 1621.00;
-    let parcelasLocais = [];
+    // ── Processo ────────────────────────────────────────────────
+    let processo = null;
+    const mProc = txt.match(/\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}/)||
+                  txt.match(/processo\s*n[oº°]?\s*:?\s*([\d.\-\/]+)/i)||
+                  txt.match(/autos\s*n[oº°]?\s*:?\s*([\d.\-\/]+)/i);
+    if(mProc) processo = mProc[0].trim();
 
-    const nomesMeses = [
-        'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
-        'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
+    // ── Juízo ───────────────────────────────────────────────────
+    let juizo = null;
+    const mJuizo = txt.match(/(\d+[aª°º]?\s*vara[^\n]{0,60})/i)||
+                   txt.match(/(juiz[o]?\s+de[^\n]{0,60})/i)||
+                   txt.match(/(tribunal[^\n]{0,60})/i);
+    if(mJuizo) juizo = mJuizo[1].trim().replace(/\s+/g,' ');
+
+    return { pct, processo, juizo };
+}
+
+async function processarOficio(){
+    const input=document.getElementById('upload-oficio');
+    const file=input.files?.[0];
+    if(!file){ alert('Selecione o arquivo do ofício.'); return; }
+    overlay(true,'Lendo ofício...');
+    try{
+        const texto=await lerTexto(file);
+        const dados=extrairDadosOficio(texto);
+
+        let msg=`Extração do ofício:\n`;
+        msg+=`• Percentual: ${dados.pct!==null?dados.pct+'%':'Não encontrado'}\n`;
+        msg+=`• Processo: ${dados.processo||'Não encontrado'}\n`;
+        msg+=`• Juízo: ${dados.juizo||'Não encontrado'}\n\n`;
+
+        if(!dados.pct){
+            overlay(false);
+            alert(msg+'Não foi possível extrair o percentual automaticamente.\nUse a edição manual.');
+            toggleOficioManual(true);
+            return;
+        }
+
+        msg+=`Salvar com estes dados?`;
+        if(!confirm(msg)){ overlay(false); return; }
+
+        const url=await uploadFile(`oficios/oficio_${Date.now()}_${file.name}`,file);
+        await db.patch('oficio',{
+            pct:dados.pct,
+            processo:dados.processo||null,
+            juizo:dados.juizo||null,
+            url,
+            textoOCR:texto.substring(0,2000),
+            atualizadoEm:new Date().toISOString()
+        });
+
+        pctDescontoGlobal=dados.pct;
+        input.value='';
+        await carregarStatusOficio();
+        await carregarParcelas();
+        alert(`Ofício salvo! Percentual: ${dados.pct}%`);
+    }catch(e){ alert('Erro: '+e.message); }
+    finally{ overlay(false); }
+}
+
+function toggleOficioManual(forcar=null){
+    const el=document.getElementById('oficio-manual');
+    const mostrar = forcar!==null ? forcar : el.style.display==='none';
+    el.style.display=mostrar?'block':'none';
+    if(mostrar){
+        document.getElementById('manual-pct').value=pctDescontoGlobal||30;
+    }
+}
+
+async function salvarOficioManual(){
+    const pct=Number(document.getElementById('manual-pct').value);
+    if(!pct||pct<1||pct>100){ alert('Informe um percentual válido (1–100).'); return; }
+    const processo=document.getElementById('manual-processo').value.trim();
+    const juizo=document.getElementById('manual-juizo').value.trim();
+    overlay(true,'Salvando...');
+    try{
+        await db.patch('oficio',{pct,processo:processo||null,juizo:juizo||null,atualizadoEm:new Date().toISOString()});
+        pctDescontoGlobal=pct;
+        toggleOficioManual(false);
+        await carregarStatusOficio();
+        await carregarParcelas();
+        alert(`Percentual salvo: ${pct}%`);
+    }catch(e){ alert('Erro: '+e.message); }
+    finally{ overlay(false); }
+}
+
+async function carregarStatusOficio(){
+    const el=document.getElementById('oficio-status');
+    try{
+        const d=await db.get('oficio');
+        if(!d||!d.pct){
+            pctDescontoGlobal=30;
+            el.innerHTML=`<span class="badge badge-gray">Nenhum ofício cadastrado — usando 30% padrão</span>`;
+            document.getElementById('stat-pct').innerText='30%';
+            document.getElementById('stat-pct-label').innerText='Padrão (sem ofício)';
+        } else {
+            pctDescontoGlobal=d.pct;
+            const dt=new Date(d.atualizadoEm).toLocaleDateString('pt-BR');
+            el.innerHTML=`
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                    <div class="oficio-destaque">
+                        <div class="oficio-item"><div class="oi-label">Desconto</div><div class="oi-val">${d.pct}%</div></div>
+                        ${d.processo?`<div class="oficio-item"><div class="oi-label">Processo</div><div class="oi-val" style="font-size:.85rem;">${d.processo}</div></div>`:''}
+                    </div>
+                    ${d.juizo?`<div style="font-size:.78rem;color:#475569;margin-top:4px;">⚖️ ${d.juizo}</div>`:''}
+                    <div style="font-size:.72rem;color:#94a3b8;">Atualizado em ${dt}
+                        ${d.url?` · <a href="${d.url}" target="_blank" style="color:#7c3aed;">📎 Ver arquivo</a>`:''}
+                    </div>
+                    <button onclick="removerOficio()" style="background:none;border:none;color:#ef4444;font-size:.72rem;font-weight:700;cursor:pointer;text-align:left;padding:0;margin-top:2px;">🗑 Remover</button>
+                </div>`;
+            document.getElementById('stat-pct').innerText=d.pct+'%';
+            document.getElementById('stat-pct-label').innerText=d.processo||'Ofício cadastrado';
+        }
+    }catch(e){
+        el.innerHTML=`<span style="color:#ef4444;">Erro ao carregar ofício.</span>`;
+    }
+}
+
+async function removerOficio(){
+    if(!confirm('Remover ofício? O percentual voltará a 30%.')) return;
+    overlay(true,'Removendo...');
+    try{
+        await db.patch('oficio',{pct:null,processo:null,juizo:null,url:null});
+        pctDescontoGlobal=30;
+        await carregarStatusOficio();
+        await carregarParcelas();
+    }catch(e){ alert('Erro: '+e.message); }
+    finally{ overlay(false); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CTPS — Extração automática da data de admissão
+═══════════════════════════════════════════════════════════════ */
+function extrairAdmissaoCTPS(txt){
+    const t = txt;
+    const tn= norm(txt);
+
+    // Padrões em ordem de prioridade
+    const padroes = [
+        // "Data de Admissão: 01/04/2026" ou "Admissão: 01/04/2026"
+        /admiss[aã]o\s*[:\-]?\s*(\d{2})[\/\-\.](\d{2})[\/\-\.](\d{4})/i,
+        // "Admitido em 01/04/2026"
+        /admitido\s+em\s+(\d{2})[\/\-\.](\d{2})[\/\-\.](\d{4})/i,
+        // "Início do Contrato: 01/04/2026"
+        /in[ií]cio\s+do\s+contrato\s*[:\-]?\s*(\d{2})[\/\-\.](\d{2})[\/\-\.](\d{4})/i,
+        // "Data de Início: 01/04/2026"
+        /data\s+de\s+in[ií]cio\s*[:\-]?\s*(\d{2})[\/\-\.](\d{2})[\/\-\.](\d{4})/i,
+        // "Contratado em: 01/04/2026"
+        /contratado\s+em\s*[:\-]?\s*(\d{2})[\/\-\.](\d{2})[\/\-\.](\d{4})/i,
+        // "01/04/2026" próximo à palavra admissão (fallback)
+        /(\d{2})[\/\-\.](\d{2})[\/\-\.](20\d{2})/,
     ];
 
-    // File input label update
-    document.querySelectorAll('.file-input-wrapper input[type="file"]').forEach(inp => {
-        inp.addEventListener('change', () => {
-            const fake = inp.nextElementSibling;
-            if (fake && inp.files[0]) fake.textContent = '✓ ' + inp.files[0].name;
-        });
-    });
-
-    function overlay(show, text = 'Processando arquivo...') {
-        const el = document.getElementById('overlay');
-        document.getElementById('overlay-text').innerText = text;
-        el.classList.toggle('show', show);
-    }
-
-    function isDesempregado() {
-        return document.getElementById('check-desempregado').checked;
-    }
-
-    function toggleDesempregado() { carregarParcelas(); }
-
-    function valorPensaoDesemprego() {
-        return Number((SALARIO_MINIMO_ATUAL * 0.30).toFixed(2));
-    }
-
-    function getValorAno(ano, mes = 0) {
-        // mes é 0-indexed (0=jan ... 11=dez)
-        // Antes de abril/2026 (inclusive março/2026): 30% do salário mínimo do período
-        const antesDeAbril2026 = ano < 2026 || (ano === 2026 && mes < 3);
-        if (isDesempregado() || antesDeAbril2026) {
-            if (ano <= 2024) return 1412 * 0.30;
-            if (ano === 2025) return 1518 * 0.30;
-            return 1621 * 0.30;
-        }
-        // A partir de abril/2026: 15% do salário mínimo atual (empregado)
-        return 1621 * 0.15;
-    }
-
-    function moneyBR(valor) {
-        return `R$ ${Number(valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    }
-
-    function normalizarTexto(txt = '') {
-        return txt.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
-    }
-
-    function parseCurrencyCandidates(textoOriginal) {
-        const texto = textoOriginal || '';
-        const encontrados = [];
-        const regex = /(?:r\$\s*)?(\d{1,3}(?:\.\d{3})*,\d{2}|\d+[,\.]\d{2})/gi;
-        let match;
-        while ((match = regex.exec(texto)) !== null) {
-            const bruto = match[1];
-            const normalizado = bruto.replace(/\./g, '').replace(',', '.');
-            const valor = Number(normalizado);
-            if (!Number.isNaN(valor)) encontrados.push(valor);
-        }
-        return encontrados;
-    }
-
-    function detectarTipoDocumento(textoOriginal) {
-        const texto = normalizarTexto(textoOriginal);
-        const sinaisHolerite = ['holerite','demonstrativo de pagamento','demonstrativo de salario','vencimentos','descontos','inss','fgts','cargo','empresa','referencia','competencia'];
-        const sinaisBanco = ['pix','transferencia','comprovante','ted','doc','agencia','conta','autenticacao','neon','nubank','itau','bradesco','caixa','inter','santander'];
-        const scoreHolerite = sinaisHolerite.filter(x => texto.includes(x)).length;
-        const scoreBanco = sinaisBanco.filter(x => texto.includes(x)).length;
-        if (scoreHolerite >= 2 && scoreHolerite >= scoreBanco) return 'holerite';
-        if (scoreBanco >= 1) return 'bancario';
-        return 'desconhecido';
-    }
-
-    function extrairCompetenciaHolerite(textoOriginal) {
-        const texto = textoOriginal || '';
-        const textoNorm = normalizarTexto(textoOriginal);
-        let match = texto.match(/\b(0?[1-9]|1[0-2])\s*[\/\-]\s*(20\d{2})\b/);
-        if (match) return { mes: Number(match[1]), ano: Number(match[2]) };
-        match = texto.match(/\b(20\d{2})\s*[\/\-]\s*(0?[1-9]|1[0-2])\b/);
-        if (match) return { mes: Number(match[2]), ano: Number(match[1]) };
-        for (let i = 0; i < nomesMeses.length; i++) {
-            const regex = new RegExp(`\\b${nomesMeses[i]}\\s*(?:de)?\\s*(20\\d{2})\\b`, 'i');
-            const m = textoNorm.match(regex);
-            if (m) return { mes: i + 1, ano: Number(m[1]) };
-        }
-        return null;
-    }
-
-    function obterMesTexto(mesNumero) {
-        return nomesMeses[(mesNumero || 1) - 1] || 'janeiro';
-    }
-
-    function obterMesAnoPorId(id) {
-        const partes = id.replace('p-', '').split('-');
-        const ano = Number(partes[0]);
-        const mesIndex = Number(partes[1]);
-        return { mes: mesIndex + 1, ano };
-    }
-
-    function buildParcelaId(mes, ano) { return `p-${ano}-${mes - 1}`; }
-
-    function extrairValorPensaoHolerite(textoOriginal) {
-        const linhas = (textoOriginal || '').split(/\n+/).map(x => x.trim()).filter(Boolean);
-        for (const linha of linhas) {
-            const n = normalizarTexto(linha);
-            if (n.includes('pensao judicial')) {
-                const valores = parseCurrencyCandidates(linha);
-                if (valores.length) return valores[valores.length - 1];
+    for(const rx of padroes){
+        const m=t.match(rx);
+        if(m){
+            const dia=m[1], mes=m[2], ano=m[3];
+            // Valida data
+            const d=new Date(`${ano}-${mes}-${dia}`);
+            if(!isNaN(d)&&d.getFullYear()>=2020&&d.getFullYear()<=2030){
+                return `${ano}-${mes}-${dia}`; // formato YYYY-MM-DD para input[date]
             }
         }
-        const textoNorm = normalizarTexto(textoOriginal);
-        if (textoNorm.includes('pensao judicial')) {
-            const valores = parseCurrencyCandidates(textoOriginal);
-            if (valores.length) return valores[valores.length - 1];
+    }
+    return null;
+}
+
+async function lerCTPS(){
+    const input=document.getElementById('upload-ctps');
+    const file=input.files?.[0];
+    if(!file){ alert('Selecione o PDF da CTPS primeiro.'); return; }
+    overlay(true,'Lendo CTPS via OCR...');
+    const el=document.getElementById('ctps-extracao');
+    try{
+        const texto=await lerTexto(file);
+        const dataStr=extrairAdmissaoCTPS(texto);
+        el.style.display='block';
+        if(dataStr){
+            const [ano,mes,dia]=dataStr.split('-');
+            document.getElementById('input-admissao').value=dataStr;
+            el.innerHTML=`✅ <strong>Data encontrada:</strong> ${dia}/${mes}/${ano} — Verifique e clique em <em>Salvar</em>.`;
+            el.style.background='#f0fdf4'; el.style.border='1px solid #bbf7d0';
+        } else {
+            el.innerHTML=`⚠️ Não foi possível extrair a data automaticamente. Informe manualmente.`;
+            el.style.background='#fffbeb'; el.style.border='1px solid #fde68a';
         }
-        return null;
-    }
+    }catch(e){ alert('Erro no OCR: '+e.message); }
+    finally{ overlay(false); }
+}
 
-    async function pdfToImage(file) {
-        const pdf = await pdfjsLib.getDocument(await file.arrayBuffer()).promise;
-        const page = await pdf.getPage(1);
-        const viewport = page.getViewport({ scale: 2 });
-        const canvas = document.createElement('canvas');
-        canvas.height = viewport.height; canvas.width = viewport.width;
-        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-        return canvas.toDataURL();
-    }
-
-    async function lerTextoArquivo(file) {
-        const imageSrc = file.type === "application/pdf" ? await pdfToImage(file) : URL.createObjectURL(file);
-        try {
-            const { data: { text } } = await Tesseract.recognize(imageSrc, 'por');
-            return text;
-        } finally {
-            if (file.type !== "application/pdf") URL.revokeObjectURL(imageSrc);
+async function salvarCTPS(){
+    const input=document.getElementById('upload-ctps');
+    const admInput=document.getElementById('input-admissao').value;
+    const file=input.files?.[0];
+    if(!admInput){ alert('Informe a data de admissão.'); return; }
+    overlay(true,'Salvando CTPS...');
+    try{
+        let url=null;
+        const atual=await db.get('ctps').catch(()=>({}));
+        url=atual?.url||null;
+        if(file){
+            if(file.type!=='application/pdf'){ alert('Apenas PDF.'); overlay(false); return; }
+            url=await uploadFile(`ctps/ctps_${Date.now()}.pdf`,file)||url;
         }
+        await db.patch('ctps',{url,admissao:admInput,enviadoEm:new Date().toISOString(),nomeArquivo:file?.name||atual?.nomeArquivo||''});
+        input.value='';
+        dataAdmissaoGlobal=new Date(admInput+'T00:00:00');
+        document.getElementById('ctps-extracao').style.display='none';
+        await carregarStatusCTPS();
+        await carregarParcelas();
+        alert('CTPS salva!');
+    }catch(e){ alert('Erro: '+e.message); }
+    finally{ overlay(false); }
+}
+
+async function removerCTPS(){
+    if(!confirm('Remover CTPS?')) return;
+    overlay(true,'Removendo...');
+    try{
+        await db.patch('ctps',{url:null,admissao:null,enviadoEm:null});
+        dataAdmissaoGlobal=null;
+        document.getElementById('input-admissao').value='';
+        await carregarStatusCTPS();
+        await carregarParcelas();
+    }catch(e){ alert('Erro: '+e.message); }
+    finally{ overlay(false); }
+}
+
+async function carregarStatusCTPS(){
+    const el=document.getElementById('ctps-status');
+    try{
+        const d=await db.get('ctps');
+        if(!d||!d.admissao){
+            dataAdmissaoGlobal=null;
+            el.innerHTML=`<span class="badge badge-gray">Nenhuma CTPS cadastrada</span>`;
+        } else {
+            dataAdmissaoGlobal=new Date(d.admissao+'T00:00:00');
+            const [ano,mes,dia]=d.admissao.split('-');
+            const envio=new Date(d.enviadoEm).toLocaleDateString('pt-BR');
+            el.innerHTML=`
+                <div style="display:flex;flex-direction:column;gap:5px;">
+                    <span class="badge badge-green">✔ CTPS salva</span>
+                    <div style="font-size:.8rem;color:#374151;margin-top:4px;">
+                        <strong>Admissão:</strong> ${dia}/${mes}/${ano}<br>
+                        <strong>Enviada em:</strong> ${envio}
+                    </div>
+                    ${d.url?`<a href="${d.url}" target="_blank" style="font-size:.78rem;color:#3b82f6;font-weight:700;text-decoration:none;">📥 Ver PDF</a>`:''}
+                    <button onclick="removerCTPS()" style="background:none;border:none;color:#ef4444;font-size:.72rem;font-weight:700;cursor:pointer;text-align:left;padding:0;margin-top:2px;">🗑 Remover</button>
+                </div>`;
+            document.getElementById('input-admissao').value=d.admissao;
+        }
+    }catch(e){
+        el.innerHTML=`<span style="color:#ef4444;">Erro ao carregar CTPS.</span>`;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CARREGAR PARCELAS
+═══════════════════════════════════════════════════════════════ */
+async function carregarParcelas(){
+    const corpo=document.getElementById('corpo-tabela');
+    corpo.innerHTML='<tr><td colspan="7" style="text-align:center;padding:20px;color:#94a3b8;">Carregando...</td></tr>';
+    let nuvem={};
+    try{ nuvem=await db.get('pensao')||{}; }
+    catch(e){
+        corpo.innerHTML=`<tr><td colspan="7" style="color:red;padding:20px;text-align:center;">⚠️ Erro ao conectar.<br><small>${e.message}</small></td></tr>`;
+        return;
+    }
+    corpo.innerHTML='';
+    parcelasLocais=[];
+
+    const admissao=admissaoPrimeiroDia();
+    const fimDesemp=admissao
+        ? new Date(admissao.getFullYear(),admissao.getMonth()-1,1)
+        : new Date(2026,5,1);
+
+    let totalAtrasado=0, totalEmpregado=0, pagos=0, total=0;
+    const linhasD=[], linhasE=[];
+
+    // ── Desemprego
+    let d=new Date(INICIO_DESEMPREGO);
+    while(d<=fimDesemp){
+        const ano=d.getFullYear(), mesIdx=d.getMonth();
+        const id=buildId(mesIdx+1,ano);
+        const info=nuvem[id]||{};
+        const salBase=salMin(ano);
+        const pct=30; // desemprego sempre 30% salário mínimo
+        const valor=+(salBase*(pct/100)).toFixed(2);
+        const vFinal=Number(info.valor??valor);
+        const status=info.status||'pendente';
+        const label=dateToLabel(d);
+        parcelasLocais.push({id,valor:vFinal,status,ref:label,tipo:'desemprego'});
+        total++;
+        if(status==='pago') pagos++;
+        else totalAtrasado+=vFinal;
+        linhasD.push({id,valor:vFinal,status,label,salBase,pct});
+        d.setMonth(d.getMonth()+1);
     }
 
-    async function carregarParcelas() {
-        const snapshot = await db.ref('pensao').once('value');
-        const statusNuvem = snapshot.val() || {};
-        const corpo = document.getElementById('corpo-tabela');
-        corpo.innerHTML = '';
-        parcelasLocais = [];
+    // ── Empregado
+    if(admissao){
+        let e=new Date(admissao);
+        while(e<=hoje){
+            const ano=e.getFullYear(), mesIdx=e.getMonth();
+            const id=buildId(mesIdx+1,ano);
+            const info=nuvem[id]||{};
+            const pct=pctDescontoGlobal;
 
-        let pendente = 0, pagos = 0, total = 0;
-        let d = new Date(dataInicio);
+            // Determina salário base:
+            // 1. Se tem holerite individual -> usa salarioBase do banco
+            // 2. Se tem salário global configurado e parcela >= início -> usa global
+            // 3. Fallback: salário mínimo do ano como placeholder
+            const temHolIndividual = info.origemCalculo &&
+                info.origemCalculo.startsWith('holerite') &&
+                Number(info.salarioBase||0) >= salMin(ano)*0.5;
+            let salBase;
+            if(temHolIndividual){
+                salBase = Number(info.salarioBase ?? salMin(ano));
+            } else if(salarioLiquidoGlobal?.valor){
+                const [iAno,iMes] = (salarioLiquidoGlobal.inicio||'2026-04').split('-').map(Number);
+                const inicioSal   = new Date(iAno,iMes-1,1);
+                salBase = e>=inicioSal ? salarioLiquidoGlobal.valor : Number(info.salarioBase??salMin(ano));
+            } else {
+                salBase = Number(info.salarioBase ?? salMin(ano));
+            }
 
-        while (d <= hoje) {
-            const ano = d.getFullYear();
-            const mesIndex = d.getMonth();
-            const id = `p-${ano}-${mesIndex}`;
-            const valorPadrao = getValorAno(ano, mesIndex);
-            const info = statusNuvem[id] || { status: 'pendente' };
-            const valor = Number(info.valor ?? valorPadrao);
-            const status = info.status || 'pendente';
-            const mes = d.toLocaleString('pt-BR', { month: 'long' });
+            // Validação mínima
+            const minAceitavel = salMin(ano)*0.5;
+            if(salBase < minAceitavel) salBase = salMin(ano);
 
-            parcelasLocais.push({ id, valor, status, ref: `${mes}/${ano}` });
+            const valorCalculado = +(salBase*(pct/100)).toFixed(2);
+            const valorSalvo     = Number(info.valor??0);
+            const vFinal = (valorSalvo>0 && Math.abs(valorSalvo-valorCalculado)/valorCalculado<=0.05)
+                ? valorSalvo
+                : valorCalculado;
+
+            const status = info.status||'pendente';
+            const label  = dateToLabel(e);
+            const precisaCorrecao = info.valor!=null && Math.abs(Number(info.valor)-vFinal)>0.5;
+
+            parcelasLocais.push({id,valor:vFinal,status,ref:label,tipo:'empregado'});
             total++;
-            if (status === 'pago') pagos++;
-            else pendente += valor;
-
-            corpo.innerHTML += buildRow(mes, ano, valor, status, id);
-            d.setMonth(d.getMonth() + 1);
+            if(status==='pago') pagos++;
+            else totalEmpregado+=vFinal;
+            linhasE.push({id,valor:vFinal,status,label,salBase,pct,precisaCorrecao,valorOriginal:info.valor});
+            e.setMonth(e.getMonth()+1);
         }
-
-        const extras = Object.entries(statusNuvem).filter(([id]) => !parcelasLocais.some(p => p.id === id));
-        extras.sort((a, b) => a[0].localeCompare(b[0])).forEach(([id, info]) => {
-            const { mes, ano } = obterMesAnoPorId(id);
-            const valor = Number(info.valor ?? getValorAno(ano, mes - 1));
-            const status = info.status || 'pendente';
-            const ref = `${obterMesTexto(mes)}/${ano}`;
-            parcelasLocais.push({ id, valor, status, ref });
-            total++;
-            if (status === 'pago') pagos++;
-            else pendente += valor;
-            corpo.innerHTML += buildRow(obterMesTexto(mes), ano, valor, status, id);
-        });
-
-        document.getElementById('total-geral').innerText = moneyBR(pendente);
-        document.getElementById('progresso').innerText = `${pagos} / ${total} pagos`;
     }
 
-    function buildRow(mes, ano, valor, status, id) {
-        const statusEl = status === 'pago'
-            ? `<span class="status-pago">PAGO</span>`
-            : `<span class="status-pendente">PENDENTE</span>`;
-        const acaoEl = status === 'pendente'
-            ? `<div class="action-file-wrap">
-                    <input type="file" onchange="validarIndividual(this, '${id}', ${valor.toFixed(2)})" accept="image/*,.pdf">
-                    <span class="action-file-btn">📎 Comprovante</span>
+    function renderLinha({id,valor,status,label,salBase,pct,precisaCorrecao,valorOriginal},tipo){
+        const isPago=status==='pago';
+        const tipoBadge=tipo==='desemprego'
+            ?`<span class="badge badge-yellow">Desemprego</span>`
+            :`<span class="badge badge-green">Empregado</span>`;
+
+        // Valor com alerta de correção automática
+        const valorCell = precisaCorrecao
+            ? `<strong>${moneyBR(valor)}</strong>
+               <div style="font-size:.62rem;color:#f59e0b;font-weight:700;margin-top:2px;">
+                 ⚠️ Corrigido (era ${moneyBR(valorOriginal)})
                </div>`
-            : `<button class="action-revoke" onclick="revogar('${id}')">✕ Anular</button>`;
-        return `<tr>
-            <td class="mes-text">${mes}/${ano}</td>
-            <td class="val-text">${moneyBR(valor)}</td>
-            <td>${statusEl}</td>
-            <td>${acaoEl}</td>
+            : `<strong>${moneyBR(valor)}</strong>`;
+
+        const acoes=isPago
+            ?`<button onclick="revogar('${id}')" style="color:#ef4444;border:none;background:none;cursor:pointer;font-size:10px;font-weight:700;">ANULAR</button>`
+            :`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                <input type="file" onchange="validarIndividual(this,'${id}',${valor.toFixed(2)})" style="font-size:.6rem;">
+                ${precisaCorrecao?`<button onclick="salvarCorrecao('${id}',${valor},${salBase},${pct})" style="padding:3px 8px;border-radius:5px;border:1px solid #f59e0b;background:#fffbeb;color:#92400e;font-size:.65rem;font-weight:700;cursor:pointer;">Fixar valor</button>`:''}
+              </div>`;
+
+        return `<tr class="row-${tipo}" style="${precisaCorrecao?'outline:1px solid #f59e0b;':''}" >
+            <td style="text-transform:capitalize;">${label}</td>
+            <td>${tipoBadge}</td>
+            <td style="color:#64748b;">${moneyBR(salBase)}</td>
+            <td><span class="badge badge-purple">${pct}%</span></td>
+            <td>${valorCell}</td>
+            <td style="color:${isPago?'#10b981':'#ef4444'};font-weight:700;">${isPago?'PAGO':'PENDENTE'}</td>
+            <td>${acoes}</td>
         </tr>`;
     }
 
-    function simularLote() {
-        const qtd = parseInt(document.getElementById('input-qtd').value) || 1;
-        const lista = parcelasLocais.filter(p => p.status === 'pendente').slice(0, qtd);
-        if (lista.length === 0) return alert("Nenhuma parcela pendente encontrada.");
-        const soma = lista.reduce((acc, x) => acc + x.valor, 0);
-        const grid = document.getElementById('lista-meses-detalhe');
-        grid.innerHTML = '';
-        lista.forEach(p => { grid.innerHTML += `<div class="mes-tag"><strong>${p.ref}</strong><span>${moneyBR(p.valor)}</span></div>`; });
-        document.getElementById('total-lote-info').innerText = `Valor Total: ${moneyBR(soma)}`;
-        document.getElementById('box-lote').style.display = 'block';
-        window.loteAtivo = { alvo: lista, soma: soma.toFixed(2) };
+    if(linhasD.length){
+        corpo.innerHTML+=`<tr class="section-sep"><td colspan="7">📛 Desemprego — fev/2024 → ${linhasD[linhasD.length-1].label} — 30% salário mínimo</td></tr>`;
+        linhasD.forEach(l=>corpo.innerHTML+=renderLinha(l,'desemprego'));
+    }
+    if(linhasE.length){
+        corpo.innerHTML+=`<tr class="section-sep"><td colspan="7">✅ Empregado — ${linhasE[0].label} → ${linhasE[linhasE.length-1].label} — ${pctDescontoGlobal}% salário real</td></tr>`;
+        linhasE.forEach(l=>corpo.innerHTML+=renderLinha(l,'empregado'));
+    }
+    if(!linhasD.length&&!linhasE.length){
+        corpo.innerHTML='<tr><td colspan="7" style="text-align:center;padding:20px;color:#94a3b8;">Nenhuma parcela. Clique em "Criar / sincronizar".</td></tr>';
     }
 
-    async function processarHoleriteGlobal() {
-        const input = document.getElementById('upload-holerite');
-        const file = input.files?.[0];
-        if (!file) { alert('Selecione um holerite.'); return; }
-        overlay(true, 'Lendo holerite...');
-        try {
-            const texto = await lerTextoArquivo(file);
-            const tipo = detectarTipoDocumento(texto);
-            if (tipo !== 'holerite') { alert('O arquivo enviado não parece ser um holerite.'); return; }
-            const competencia = extrairCompetenciaHolerite(texto);
-            if (!competencia) { alert('Não foi possível identificar a competência do holerite.'); return; }
-            const parcelaId = buildParcelaId(competencia.mes, competencia.ano);
-            const snapExistente = await db.ref('pensao/' + parcelaId).once('value');
-            const existente = snapExistente.val() || {};
-            let valorParcela, origemValor;
-            if (isDesempregado()) {
-                valorParcela = valorPensaoDesemprego(); origemValor = 'salario_minimo';
-            } else {
-                const valorPensao = extrairValorPensaoHolerite(texto);
-                if (valorPensao == null) { alert('Não encontrei a linha de Pensão Judicial no holerite.'); return; }
-                valorParcela = Number(valorPensao.toFixed(2)); origemValor = 'holerite';
-            }
-            const storageRef = storage.ref(`holerites/${parcelaId}_${Date.now()}_${file.name}`);
-            await storageRef.put(file);
-            const urlHolerite = await storageRef.getDownloadURL();
-            await db.ref('pensao/' + parcelaId).update({
-                status: existente.status || 'pendente', valor: valorParcela,
-                competenciaValidada: `${String(competencia.mes).padStart(2,'0')}/${competencia.ano}`,
-                holerite: urlHolerite, origemCalculo: origemValor,
-                desempregado: isDesempregado(), atualizadoEm: new Date().toISOString()
-            });
-            await carregarParcelas();
-            alert(`Parcela ${String(competencia.mes).padStart(2,'0')}/${competencia.ano} criada/atualizada com sucesso no valor de ${moneyBR(valorParcela)}.`);
-        } catch (e) { console.error(e); alert('Erro ao processar holerite.'); }
-        finally { overlay(false); input.value = ''; }
-    }
+    // Totais
+    const pAtras=admissao
+        ?`fev/2024 – ${linhasD.length?linhasD[linhasD.length-1].label:'–'}`
+        :'fev/2024 – jun/2026';
+    const pEmp=admissao&&linhasE.length
+        ?`${linhasE[0].label} – ${linhasE[linhasE.length-1].label}`
+        :admissao?'Sem parcelas':'Informe a admissão';
+    document.getElementById('total-atrasado').innerText=moneyBR(totalAtrasado);
+    document.getElementById('total-empregado').innerText=moneyBR(totalEmpregado);
+    document.getElementById('total-geral').innerText=moneyBR(totalAtrasado+totalEmpregado);
+    document.getElementById('periodo-atrasado').innerText=pAtras;
+    document.getElementById('periodo-empregado').innerText=pEmp;
+    document.getElementById('total-pagos-label').innerText=`${pagos}/${total} parcelas pagas`;
+    document.getElementById('progresso').innerText=`${pagos}/${total} PAGOS`;
+}
 
-    function validarHolerite(texto, id, valorAlvo) {
-        const competencia = extrairCompetenciaHolerite(texto);
-        if (!competencia) return { ok: false, motivo: 'Não foi possível identificar o mês/ano no holerite.' };
-        const esperado = obterMesAnoPorId(id);
-        if (competencia.mes !== esperado.mes || competencia.ano !== esperado.ano) {
-            return { ok: false, motivo: `Competência do holerite (${String(competencia.mes).padStart(2,'0')}/${competencia.ano}) não corresponde à parcela selecionada.` };
+/* ═══════════════════════════════════════════════════════════════
+   INICIALIZAR
+═══════════════════════════════════════════════════════════════ */
+async function inicializarTodasParcelas(){
+    const admissao=admissaoPrimeiroDia();
+    const msg=admissao
+        ?`Criar parcelas:\n• Desemprego: fev/2024 → ${admissao.toLocaleDateString('pt-BR')}\n• Empregado: ${admissao.toLocaleDateString('pt-BR')} → hoje\n• Desconto empregado: ${pctDescontoGlobal}%\n\nContinuar?`
+        :`Sem data de admissão. Criará só desemprego (fev/2024–jun/2026).\nContinuar?`;
+    if(!confirm(msg)) return;
+    overlay(true,'Criando parcelas...');
+    try{
+        const exist=await db.get('pensao').catch(()=>({}))||{};
+        const upd={};
+        const fimD=admissao?new Date(admissao.getFullYear(),admissao.getMonth()-1,1):new Date(2026,5,1);
+        let d=new Date(INICIO_DESEMPREGO);
+        while(d<=fimD){
+            const ano=d.getFullYear(),mes=d.getMonth()+1;
+            const id=buildId(mes,ano);
+            if(!exist[id]) upd[`pensao/${id}`]={status:'pendente',valor:valorDesemprego(ano),salarioBase:salMin(ano),tipo:'desemprego',pct:30,criadoEm:new Date().toISOString()};
+            d.setMonth(d.getMonth()+1);
         }
-        if (isDesempregado()) return { ok: true, motivo: 'Holerite validado com cálculo por desemprego.', competenciaValidada: `${String(competencia.mes).padStart(2,'0')}/${competencia.ano}` };
-        const valorPensao = extrairValorPensaoHolerite(texto);
-        const textoNorm = normalizarTexto(texto);
-        const mencionaPensao = textoNorm.includes('pensao judicial');
-        if (valorPensao !== null) {
-            if (Math.abs(valorPensao - valorAlvo) <= 5) return { ok: true, motivo: 'Holerite validado.', competenciaValidada: `${String(competencia.mes).padStart(2,'0')}/${competencia.ano}` };
-            return { ok: false, motivo: `A linha "Pensão Judicial" foi encontrada, mas o valor lido (${moneyBR(valorPensao)}) não confere com a parcela esperada.` };
-        }
-        if (mencionaPensao) return { ok: true, motivo: 'Holerite validado. Competência confere e há menção a pensão judicial.', competenciaValidada: `${String(competencia.mes).padStart(2,'0')}/${competencia.ano}` };
-        return { ok: false, motivo: 'Holerite identificado, mas não encontrei evidência suficiente de pensão judicial.' };
-    }
-
-    async function auditoria(file, valorAlvo, inputElement, id = null, permitirHolerite = false) {
-        try {
-            const text = await lerTextoArquivo(file);
-            const tipo = detectarTipoDocumento(text);
-            if (tipo === 'holerite') {
-                if (!permitirHolerite || !id) { alert('Holerite só pode ser usado na validação individual da parcela correspondente.'); if (inputElement) inputElement.value = ""; return { ok: false }; }
-                const resultado = validarHolerite(text, id, valorAlvo);
-                if (!resultado.ok) { alert(resultado.motivo); if (inputElement) inputElement.value = ""; return { ok: false }; }
-                return { ok: true, tipo: 'holerite', competenciaValidada: resultado.competenciaValidada || null };
-            }
-            const vBr = valorAlvo.toFixed(2).replace('.', ',');
-            if (text.toLowerCase().includes("neon") && (text.includes(vBr) || text.includes(valorAlvo.toFixed(2)))) {
-                return { ok: true, tipo: 'bancario', competenciaValidada: null };
-            }
-            alert(`Erro: Valor ${moneyBR(valorAlvo)} não encontrado no comprovante.`);
-        } catch (e) { console.error(e); alert("Erro no OCR."); }
-        if (inputElement) inputElement.value = "";
-        return { ok: false };
-    }
-
-    async function processarLote(input) {
-        overlay(true, 'Validando lote...');
-        const valorLote = parseFloat(window.loteAtivo.soma);
-        const resultado = await auditoria(input.files[0], valorLote, input, null, false);
-        if (resultado.ok) {
-            const ref = storage.ref(`comprovantes/lote_${Date.now()}`);
-            await ref.put(input.files[0]);
-            const url = await ref.getDownloadURL();
-            const updates = {};
-            window.loteAtivo.alvo.forEach(p => {
-                updates['/pensao/' + p.id] = { status: 'pago', comprovante: url, dataPagamento: new Date().toISOString(), tipoComprovante: resultado.tipo || 'bancario', valor: p.valor };
-            });
-            await db.ref().update(updates);
-            alert("Sucesso! " + window.loteAtivo.alvo.length + " parcelas quitadas.");
-            document.getElementById('box-lote').style.display = 'none';
-            await carregarParcelas();
-        }
-        overlay(false);
-    }
-
-    async function validarIndividual(input, id, valor) {
-        overlay(true, 'Validando comprovante...');
-        const resultado = await auditoria(input.files[0], valor, input, id, true);
-        if (resultado.ok) {
-            const ref = storage.ref(`comprovantes/${id}_${Date.now()}`);
-            await ref.put(input.files[0]);
-            await db.ref('pensao/'+id).update({
-                status: 'pago', comprovante: await ref.getDownloadURL(),
-                tipoComprovante: resultado.tipo || 'bancario',
-                competenciaValidada: resultado.competenciaValidada || null,
-                dataPagamento: new Date().toISOString(), valor: valor
-            });
-            await carregarParcelas();
-        }
-        overlay(false);
-    }
-
-    async function revogar(id) {
-        if (confirm("Confirmar anulação desta parcela?")) {
-            await db.ref('pensao/'+id).remove();
-            await carregarParcelas();
-        }
-    }
-
-    // ── CTPS ──
-    async function extrairTextoCTPS(file) {
-        try {
-            const arrayBuffer = await file.arrayBuffer();
-            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-            let fullText = '';
-            for (let p = 1; p <= Math.min(pdf.numPages, 10); p++) {
-                const page = await pdf.getPage(p);
-                const content = await page.getTextContent();
-                fullText += content.items.map(i => i.str).join(' ') + '\n';
-            }
-            if (fullText.trim().length > 100) return fullText;
-        } catch (_) {}
-        const imageSrc = await pdfToImage(file);
-        const { data: { text } } = await Tesseract.recognize(imageSrc, 'por');
-        return text;
-    }
-
-    function extrairVinculoMaisRecente(texto) {
-        const norm = normalizarTexto(texto);
-        const original = texto;
-        let dataAdmissao = null;
-        const padroesData = [
-            /(?:admiss[aã]o|admitido|data\s+de\s+inicio|inicio\s+do\s+contrato|data\s+inicio)[^\d]{0,20}(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](20\d{2})/i,
-            /(?:admiss[aã]o|admitido|data\s+de\s+inicio|inicio\s+do\s+contrato)[^\d]{0,20}(20\d{2})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/i,
-            /(?:admiss[aã]o|admitido|inicio)[^\d]{0,15}(?:(\d{1,2})[\/\-](20\d{2}))/i,
-        ];
-        for (const re of padroesData) {
-            const m = norm.match(re);
-            if (m) {
-                const g = m.slice(1).map(Number);
-                if (g[2] >= 2000) dataAdmissao = new Date(g[2], g[1] - 1, g[0] || 1);
-                else if (g[0] >= 2000) dataAdmissao = new Date(g[0], g[1] - 1, g[2] || 1);
-                else if (g[1] >= 2000) dataAdmissao = new Date(g[1], g[0] - 1, 1);
-                if (dataAdmissao && !isNaN(dataAdmissao)) break;
+        if(admissao){
+            let e=new Date(admissao);
+            while(e<=hoje){
+                const ano=e.getFullYear(),mes=e.getMonth()+1;
+                const id=buildId(mes,ano);
+                if(!exist[id]) upd[`pensao/${id}`]={status:'pendente',valor:+(salMin(ano)*(pctDescontoGlobal/100)).toFixed(2),salarioBase:salMin(ano),tipo:'empregado',pct:pctDescontoGlobal,criadoEm:new Date().toISOString()};
+                e.setMonth(e.getMonth()+1);
             }
         }
-        if (!dataAdmissao) {
-            const datas = [];
-            const reGenerico = /\b(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](20\d{2})\b/g;
-            let m;
-            while ((m = reGenerico.exec(original)) !== null) {
-                const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
-                if (!isNaN(d) && d <= new Date()) datas.push(d);
-            }
-            if (datas.length) { datas.sort((a, b) => b - a); dataAdmissao = datas[0]; }
-        }
-        let salario = null;
-        const padroesSalario = [
-            /(?:sal[aá]rio\s*(?:base|bruto|contratual)?|remuner[aá][çc][aã]o|remunera[çc]ao|piso\s+salarial)[^\d]{0,25}(?:r\$\s*)?([\d.]+,\d{2})/i,
-            /(?:r\$)\s*([\d.]+,\d{2})\s*(?:mensais?|\/\s*m[eê]s)/i,
-        ];
-        for (const re of padroesSalario) {
-            const m = norm.match(re) || original.match(re);
-            if (m) { salario = parseMoedaBR(m[1]); if (salario && salario > 0) break; }
-        }
-        if (!salario) {
-            const valores = parseCurrencyCandidates(original).filter(v => v >= SALARIO_MINIMO_ATUAL && v <= 50000);
-            if (valores.length) salario = Math.max(...valores);
-        }
-        return { dataAdmissao, salario };
-    }
+        const qtd=Object.keys(upd).length;
+        if(qtd===0){ alert('Todas as parcelas já existem.'); }
+        else{ await db.patchRoot(upd); alert(`${qtd} parcela(s) criada(s)!`); }
+        await carregarParcelas();
+    }catch(e){ alert('Erro: '+e.message); }
+    finally{ overlay(false); }
+}
 
-    function parseMoedaBR(str) {
-        if (!str) return null;
-        const v = parseFloat(str.replace(/\./g, '').replace(',', '.'));
-        return isNaN(v) ? null : v;
-    }
+/* ═══════════════════════════════════════════════════════════════
+   SALÁRIO LÍQUIDO GLOBAL
+═══════════════════════════════════════════════════════════════ */
+let salarioLiquidoGlobal = null; // { valor, inicio: 'YYYY-MM' }
 
-    async function processarCTPS() {
-        const input = document.getElementById('upload-ctps');
-        const file = input.files?.[0];
-        if (!file) { alert('Selecione o PDF da Carteira de Trabalho Digital.'); return; }
-        if (file.type !== 'application/pdf') { alert('Por favor, envie um arquivo PDF.'); return; }
-        overlay(true, 'Lendo Carteira de Trabalho...');
-        try {
-            const texto = await extrairTextoCTPS(file);
-            const { dataAdmissao, salario } = extrairVinculoMaisRecente(texto);
-            if (!dataAdmissao) { alert('Não foi possível identificar a data de admissão na CTPS.\nVerifique se o PDF está legível.'); return; }
-            const salarioStr = salario ? moneyBR(salario) : '(não encontrado — será usado salário mínimo)';
-            const dataStr = dataAdmissao.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-            const pensao15 = salario ? Number((salario * 0.15).toFixed(2)) : null;
-            const novoValor = pensao15 || Number((SALARIO_MINIMO_ATUAL * 0.15).toFixed(2));
-            const pensaoStr = moneyBR(novoValor);
-            const confirmar = confirm(`CTPS processada!\n\n📅 Admissão detectada: ${dataStr}\n💰 Salário detectado: ${salarioStr}\n📊 Nova pensão (15%): ${pensaoStr}\n\nRecalcular parcelas PENDENTES a partir de ${dataStr}?`);
-            if (!confirmar) return;
-            overlay(true, 'Salvando recálculo...');
-            document.getElementById('check-desempregado').checked = false;
-            const mesInicio = dataAdmissao.getMonth();
-            const anoInicio = dataAdmissao.getFullYear();
-            const agora = new Date();
-            const ts = new Date().toISOString();
-            const statusNuvem = parcelasLocais.length
-                ? Object.fromEntries(parcelasLocais.map(p => [p.id, p]))
-                : ((await db.ref('pensao').once('value')).val() || {});
-            const updates = {};
-            let d = new Date(dataInicio);
-            while (d <= agora) {
-                const ano = d.getFullYear(); const mes = d.getMonth();
-                const id = `p-${ano}-${mes}`; const info = statusNuvem[id] || {};
-                const eDepoisAdmissao = ano > anoInicio || (ano === anoInicio && mes >= mesInicio);
-                const ePendente = (info.status || 'pendente') === 'pendente';
-                if (eDepoisAdmissao && ePendente) {
-                    updates[`/pensao/${id}`] = { status: 'pendente', valor: novoValor, origemCalculo: 'ctps', salarioCtps: salario || null, dataAdmissaoCtps: dataAdmissao.toISOString(), desempregado: false, atualizadoEm: ts };
+async function carregarSalarioLiquido(){
+    try{
+        const d = await db.get('salario').catch(()=>null);
+        if(d?.valor){
+            salarioLiquidoGlobal = d;
+            document.getElementById('input-salario-liquido').value = d.valor;
+            document.getElementById('input-salario-inicio').value  = d.inicio||'';
+            const pct = pctDescontoGlobal;
+            const pensao = +(d.valor*(pct/100)).toFixed(2);
+            document.getElementById('salario-atual-info').innerHTML =
+                `✔ Salário líquido salvo: <strong>${moneyBR(d.valor)}</strong> &nbsp;→&nbsp; Pensão: <strong>${moneyBR(pensao)}</strong> (${pct}%) &nbsp;|&nbsp; desde ${d.inicio||'–'}`;
+        }
+    }catch(e){}
+}
+
+async function aplicarSalarioLiquido(){
+    const liquido = parseFloat(document.getElementById('input-salario-liquido').value);
+    const inicio  = document.getElementById('input-salario-inicio').value; // 'YYYY-MM'
+
+    if(!liquido||liquido<100){ alert('Informe um salário líquido válido (mínimo R$ 100).'); return; }
+    if(!inicio){ alert('Informe a partir de qual mês/ano este salário é válido.'); return; }
+
+    const pct = pctDescontoGlobal;
+    const pensao = +(liquido*(pct/100)).toFixed(2);
+
+    if(!confirm(
+        `Aplicar salário líquido ${moneyBR(liquido)} a partir de ${inicio}?\n\n` +
+        `Pensão calculada: ${moneyBR(pensao)} (${pct}%)\n\n` +
+        `Todas as parcelas do período EMPREGADO a partir de ${inicio} sem holerite individualizado serão atualizadas.`
+    )) return;
+
+    overlay(true,'Atualizando parcelas...');
+    try{
+        // Salva configuração do salário
+        await db.patch('salario',{valor:liquido, inicio, pct, atualizadoEm:new Date().toISOString()});
+        salarioLiquidoGlobal={valor:liquido,inicio};
+
+        // Busca parcelas existentes e atualiza as que são do período empregado >= inicio
+        const nuvem = await db.get('pensao').catch(()=>({}))||{};
+        const [iAno,iMes] = inicio.split('-').map(Number);
+        const inicioDate  = new Date(iAno,iMes-1,1);
+        const admissao    = admissaoPrimeiroDia();
+
+        const updates = {};
+        let contador  = 0;
+
+        // Percorre parcelas empregado a partir do início informado
+        if(admissao){
+            let e = new Date(admissao);
+            while(e<=hoje){
+                const ano=e.getFullYear(), mesIdx=e.getMonth();
+                if(e >= inicioDate){
+                    const id = buildId(mesIdx+1,ano);
+                    const info = nuvem[id]||{};
+
+                    // Considera holerite individual válido APENAS se o salarioBase
+                    // está dentro de um range razoável (> 50% do salário mínimo)
+                    const salBaseInfo = Number(info.salarioBase||0);
+                    const minAceitavel = salMin(ano)*0.5;
+                    const holValido = info.origemCalculo &&
+                        info.origemCalculo.startsWith('holerite') &&
+                        salBaseInfo >= minAceitavel;
+
+                    if(!holValido){
+                        updates[`pensao/${id}`] = {
+                            ...(nuvem[id]||{}),
+                            salarioBase: liquido,
+                            valor: pensao,
+                            pct,
+                            tipo:'empregado',
+                            origemCalculo: `salario_liquido_manual_${liquido}`,
+                            atualizadoEm: new Date().toISOString()
+                        };
+                        contador++;
+                    }
                 }
-                d.setMonth(d.getMonth() + 1);
+                e.setMonth(e.getMonth()+1);
             }
-            const qtd = Object.keys(updates).length;
-            if (qtd === 0) { alert('Nenhuma parcela pendente encontrada a partir da data de admissão.'); return; }
-            await db.ref().update(updates);
-            parcelasLocais.forEach(p => { const id = p.id; if (updates[`/pensao/${id}`]) p.valor = novoValor; });
-            const rows = document.querySelectorAll('#corpo-tabela tr');
-            rows.forEach(row => {
-                const tdMes = row.cells[0]?.innerText || '';
-                const matchedParcela = parcelasLocais.find(p => {
-                    const { mes, ano } = obterMesAnoPorId(p.id);
-                    return updates[`/pensao/${p.id}`] && tdMes.toLowerCase().includes(nomesMeses[mes - 1]) && tdMes.includes(String(ano));
-                });
-                if (matchedParcela) row.cells[1].innerText = moneyBR(novoValor);
-            });
-            const pendente = parcelasLocais.filter(p => p.status === 'pendente').reduce((s, p) => s + p.valor, 0);
-            document.getElementById('total-geral').innerText = moneyBR(pendente);
-            const resultBox = document.getElementById('ctps-resultado');
-            const resultInfo = document.getElementById('ctps-info');
-            resultInfo.innerHTML = `<b>Admissão:</b> ${dataStr} &nbsp;·&nbsp; <b>Salário:</b> ${salarioStr} &nbsp;·&nbsp; <b>Nova parcela (15%):</b> ${pensaoStr}<br><b>Parcelas recalculadas:</b> ${qtd} &nbsp;<span style="color:#93c5fd; font-size:0.75rem;">(salvando PDF em background...)</span>`;
-            resultBox.style.display = 'block';
-            overlay(false); input.value = '';
-            alert(`✅ Sucesso! ${qtd} parcela(s) recalculada(s) para ${pensaoStr}/mês a partir de ${dataStr}.`);
-            storage.ref(`ctps/ctps_${Date.now()}_${file.name}`).put(file)
-                .then(snap => snap.ref.getDownloadURL())
-                .then(url => db.ref('config/ultimaCtps').set({ url, dataAdmissao: dataAdmissao.toISOString(), salario: salario || null, pensaoCalculada: novoValor, processadoEm: ts }))
-                .then(() => { const sp = resultInfo.querySelector('span'); if (sp) sp.outerHTML = '<span style="color:#86efac; font-size:0.75rem;">✓ PDF salvo</span>'; })
-                .catch(err => console.warn('Upload CTPS background falhou:', err));
-        } catch (e) { console.error(e); alert('Erro ao processar a CTPS: ' + e.message); overlay(false); input.value = ''; }
+        }
+
+        if(Object.keys(updates).length>0){
+            await db.patchRoot(updates);
+        }
+
+        document.getElementById('salario-atual-info').innerHTML =
+            `✔ Salário aplicado: <strong>${moneyBR(liquido)}</strong> → Pensão: <strong>${moneyBR(pensao)}</strong> (${pct}%) em ${contador} parcela(s)`;
+
+        await carregarParcelas();
+        alert(`✔ Salário ${moneyBR(liquido)} aplicado em ${contador} parcela(s) a partir de ${inicio}.`);
+    }catch(e){ alert('Erro: '+e.message); }
+    finally{ overlay(false); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HOLERITE
+═══════════════════════════════════════════════════════════════ */
+
+// Extrai o VALOR LÍQUIDO do holerite (base de cálculo da pensão)
+function extrairSalarios(txt){
+    const linhas=txt.split(/\n+/).map(x=>x.trim()).filter(Boolean);
+    let liquido=null, bruto=null;
+
+    // 1º: busca por "valor liquido" — linha exata
+    const kwLiquido=['valor liquido','salario liquido','liquido a receber','total liquido','vl liquido'];
+    for(const linha of linhas){
+        const n=norm(linha);
+        for(const kw of kwLiquido){
+            if(n.includes(kw)){
+                const vals=parseCurrency(linha);
+                if(vals.length){ liquido=vals[vals.length-1]; break; }
+            }
+        }
+        if(liquido) break;
     }
 
-
-    // ── Ação Judicial ──
-    async function uploadAcaoJudicial() {
-        const input = document.getElementById('upload-acao');
-        const file = input.files?.[0];
-        if (!file) { alert('Selecione o PDF da ação judicial.'); return; }
-        if (file.type !== 'application/pdf') { alert('Por favor, envie um arquivo PDF.'); return; }
-
-        overlay(true, 'Enviando ação judicial...');
-        try {
-            const ref = storage.ref(`acao_judicial/acao_${Date.now()}_${file.name}`);
-            await ref.put(file);
-            const url = await ref.getDownloadURL();
-            const ts = new Date().toISOString();
-
-            await db.ref('config/acaoJudicial').set({
-                url,
-                nomeArquivo: file.name,
-                tamanho: file.size,
-                enviadoEm: ts
-            });
-
-            const resultBox = document.getElementById('acao-resultado');
-            const resultTitle = document.getElementById('acao-res-title');
-            const resultInfo = document.getElementById('acao-info');
-
-            resultTitle.textContent = '✅ Ação Judicial Enviada';
-            resultInfo.innerHTML = `
-                <b>Arquivo:</b> ${file.name}<br>
-                <b>Enviado em:</b> ${new Date(ts).toLocaleString('pt-BR')}<br>
-                <a href="${url}" target="_blank">📄 Visualizar documento</a>
-            `;
-            resultBox.style.display = 'block';
-            input.value = '';
-            document.querySelector('#upload-acao + .file-input-fake').textContent = '📎 Selecionar PDF';
-        } catch (e) {
-            console.error(e);
-            alert('Erro ao enviar a ação judicial: ' + e.message);
-        } finally {
-            overlay(false);
+    // 2º: fallback — busca próximo de "valor liquido:" mesmo em linhas separadas
+    if(!liquido){
+        const tn=norm(txt);
+        const idx=tn.search(/valor\s+l[ií]quido/);
+        if(idx!==-1){
+            const trecho=txt.substring(idx,idx+80);
+            const vals=parseCurrency(trecho);
+            if(vals.length) liquido=vals[vals.length-1];
         }
     }
 
-    async function carregarAcaoJudicial() {
-        try {
-            const snap = await db.ref('config/acaoJudicial').once('value');
-            const data = snap.val();
-            if (!data) return;
-            const resultBox = document.getElementById('acao-resultado');
-            const resultTitle = document.getElementById('acao-res-title');
-            const resultInfo = document.getElementById('acao-info');
-            resultTitle.textContent = '📄 Ação Judicial Salva';
-            resultInfo.innerHTML = `
-                <b>Arquivo:</b> ${data.nomeArquivo}<br>
-                <b>Enviado em:</b> ${new Date(data.enviadoEm).toLocaleString('pt-BR')}<br>
-                <a href="${data.url}" target="_blank">📄 Visualizar documento</a>
-            `;
-            resultBox.style.display = 'block';
-        } catch (e) {
-            console.warn('Erro ao carregar ação judicial:', e);
+    // Bruto — apenas para referência/exibição
+    const kwBruto=['salario base','salario bruto','total de vencimentos','total vencimentos','vencimentos'];
+    for(const linha of linhas){
+        const n=norm(linha);
+        for(const kw of kwBruto){
+            if(n.includes(kw)){
+                const vals=parseCurrency(linha);
+                if(vals.length){ bruto=vals[vals.length-1]; break; }
+            }
         }
+        if(bruto) break;
     }
 
-    carregarParcelas();
-    carregarAcaoJudicial();
+    // Fallback bruto: maior valor no documento
+    if(!bruto){
+        const todos=parseCurrency(txt).filter(v=>v>800&&v<80000);
+        if(todos.length) bruto=Math.max(...todos);
+    }
+
+    return { liquido, bruto };
+}
+
+function extrairValorPensao(txt){
+    for(const linha of txt.split(/\n+/).map(x=>x.trim()).filter(Boolean)){
+        if(norm(linha).includes('pensao judicial')){
+            const vals=parseCurrency(linha); if(vals.length) return vals[vals.length-1];
+        }
+    }
+    if(norm(txt).includes('pensao judicial')){
+        const vals=parseCurrency(txt); if(vals.length) return vals[vals.length-1];
+    }
+    return null;
+}
+
+// Preview box no card do holerite
+function mostrarPreviewHolerite(dados){
+    let el=document.getElementById('holerite-preview');
+    if(!el){
+        el=document.createElement('div');
+        el.id='holerite-preview';
+        el.style.cssText='margin-top:14px;padding:14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;font-size:.83rem;';
+        document.getElementById('upload-holerite').closest('.subgrid').parentNode.appendChild(el);
+    }
+    const pctLabel = dados.isEmp ? `${pctDescontoGlobal}% (ofício)` : `30% (sal. mínimo)`;
+    const baseLabel = dados.isEmp ? `Salário líquido` : `Salário mínimo ${dados.comp.ano}`;
+    el.innerHTML=`
+        <div style="font-weight:800;color:#166534;margin-bottom:10px;">✔ Holerite lido — ${String(dados.comp.mes).padStart(2,'0')}/${dados.comp.ano}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
+            <div style="background:#fff;border:1px solid #d1fae5;border-radius:8px;padding:10px;">
+                <div style="font-size:.65rem;font-weight:700;color:#6b7280;text-transform:uppercase;">${baseLabel}</div>
+                <div style="font-size:1.2rem;font-weight:900;color:#065f46;">${moneyBR(dados.salBase)}</div>
+                ${dados.bruto&&dados.bruto!==dados.salBase?`<div style="font-size:.68rem;color:#94a3b8;">Bruto: ${moneyBR(dados.bruto)}</div>`:''}
+            </div>
+            <div style="background:#fff;border:1px solid #d1fae5;border-radius:8px;padding:10px;">
+                <div style="font-size:.65rem;font-weight:700;color:#6b7280;text-transform:uppercase;">Desconto</div>
+                <div style="font-size:1.2rem;font-weight:900;color:#7c3aed;">${pctLabel}</div>
+            </div>
+            <div style="background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:10px;">
+                <div style="font-size:.65rem;font-weight:700;color:#166534;text-transform:uppercase;">Pensão calculada</div>
+                <div style="font-size:1.2rem;font-weight:900;color:#166534;">${moneyBR(dados.valorParcela)}</div>
+            </div>
+        </div>
+        <div style="font-size:.72rem;color:#475569;margin-bottom:10px;">
+            <strong>Origem:</strong> ${dados.origem} &nbsp;|&nbsp;
+            <strong>Período:</strong> ${dados.isEmp?'Empregado':'Desemprego'}
+        </div>
+        <div style="display:flex;gap:8px;">
+            <button onclick="confirmarHolerite()" class="btn btn-success" style="flex:1;margin-top:0;padding:9px;">✔ Confirmar e salvar parcela</button>
+            <button onclick="cancelarHolerite()" style="padding:9px 14px;border-radius:8px;border:1px solid #d1d5db;background:#fff;cursor:pointer;font-weight:700;font-size:.82rem;color:#6b7280;">Cancelar</button>
+        </div>`;
+}
+
+function cancelarHolerite(){
+    const el=document.getElementById('holerite-preview');
+    if(el) el.remove();
+    document.getElementById('upload-holerite').value='';
+    window._holeriteCache=null;
+}
+
+async function confirmarHolerite(){
+    if(!window._holeriteCache){ alert('Nenhum holerite em espera.'); return; }
+    const {comp,valorParcela,salBase,isEmp,file,origem}=window._holeriteCache;
+    overlay(true,'Salvando parcela...');
+    try{
+        const id=buildId(comp.mes,comp.ano);
+        const exist=await db.get(`pensao/${id}`).catch(()=>({}))||{};
+        const urlH=await uploadFile(`holerites/${id}_${Date.now()}_${file.name}`,file);
+        await db.patch(`pensao/${id}`,{
+            status:exist.status||'pendente',
+            valor:valorParcela,
+            salarioBase:salBase,
+            pct:isEmp?pctDescontoGlobal:30,
+            tipo:isEmp?'empregado':'desemprego',
+            competenciaValidada:`${String(comp.mes).padStart(2,'0')}/${comp.ano}`,
+            holerite:urlH,
+            origemCalculo:origem,
+            atualizadoEm:new Date().toISOString()
+        });
+        cancelarHolerite();
+        await carregarParcelas();
+        alert(`✔ Parcela ${String(comp.mes).padStart(2,'0')}/${comp.ano} salva — ${moneyBR(valorParcela)}`);
+    }catch(e){ alert('Erro: '+e.message); }
+    finally{ overlay(false); }
+}
+
+async function processarHoleriteGlobal(){
+    const input=document.getElementById('upload-holerite');
+    const file=input.files?.[0];
+    if(!file){ alert('Selecione um holerite.'); return; }
+    overlay(true,'Lendo holerite via OCR...');
+    try{
+        const texto=await lerTexto(file);
+        if(detectarTipo(texto)!=='holerite'){ alert('Não parece ser um holerite.'); overlay(false); return; }
+        const comp=extrairCompetencia(texto);
+        if(!comp){ alert('Competência não identificada no holerite.'); overlay(false); return; }
+
+        const admissao=admissaoPrimeiroDia();
+        const compDate=new Date(comp.ano,comp.mes-1,1);
+        const isEmp=admissao&&compDate>=admissao;
+
+        let valorParcela, salBase, bruto, origem;
+        if(isEmp){
+            const vPensao=extrairValorPensao(texto);
+            const {liquido, bruto:b}=extrairSalarios(texto);
+            bruto=b;
+            if(vPensao!=null){
+                // Holerite já tem pensão judicial discriminada — usa direto
+                valorParcela=+vPensao.toFixed(2);
+                salBase=liquido||+(vPensao/(pctDescontoGlobal/100)).toFixed(2);
+                origem=`Pensão Judicial discriminada no holerite`;
+            } else if(liquido){
+                // Calcula % sobre o líquido
+                valorParcela=+(liquido*(pctDescontoGlobal/100)).toFixed(2);
+                salBase=liquido;
+                origem=`${moneyBR(liquido)} líquido × ${pctDescontoGlobal}%`;
+            } else if(b){
+                // Fallback: usa bruto se não achou líquido
+                valorParcela=+(b*(pctDescontoGlobal/100)).toFixed(2);
+                salBase=b;
+                origem=`${moneyBR(b)} bruto × ${pctDescontoGlobal}% (líquido não encontrado)`;
+            } else {
+                alert('Não consegui extrair o salário líquido do holerite.\nVerifique se o arquivo está legível.'); overlay(false); return;
+            }
+        } else {
+            valorParcela=valorDesemprego(comp.ano);
+            salBase=salMin(comp.ano);
+            bruto=salBase;
+            origem=`30% × salário mínimo ${comp.ano}`;
+        }
+
+        // Guarda cache para confirmar
+        window._holeriteCache={comp,valorParcela,salBase,bruto,isEmp,file,origem};
+        mostrarPreviewHolerite({comp,valorParcela,salBase,bruto,isEmp,origem});
+    }catch(e){ alert('Erro: '+e.message); }
+    finally{ overlay(false); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   VALIDAR INDIVIDUAL / AUDITORIA
+═══════════════════════════════════════════════════════════════ */
+function validarHolerite(texto,id,valorAlvo){
+    const comp=extrairCompetencia(texto);
+    if(!comp) return {ok:false,motivo:'Competência não identificada.'};
+    const esp=parseId(id);
+    if(comp.mes!==esp.mes||comp.ano!==esp.ano)
+        return {ok:false,motivo:`Competência ${String(comp.mes).padStart(2,'0')}/${comp.ano} ≠ parcela.`};
+    const vp=extrairValorPensao(texto);
+    if(vp!==null){
+        if(Math.abs(vp-valorAlvo)<=5) return {ok:true,competenciaValidada:`${String(comp.mes).padStart(2,'0')}/${comp.ano}`};
+        return {ok:false,motivo:`Valor lido (${moneyBR(vp)}) diverge da parcela.`};
+    }
+    if(norm(texto).includes('pensao judicial')) return {ok:true,competenciaValidada:`${String(comp.mes).padStart(2,'0')}/${comp.ano}`};
+    return {ok:false,motivo:'Sem evidência de Pensão Judicial.'};
+}
+
+async function auditoria(file,valorAlvo,inputEl,id=null,permitirH=false){
+    try{
+        const texto=await lerTexto(file);
+        const tipo=detectarTipo(texto);
+        if(tipo==='holerite'){
+            if(!permitirH||!id){ alert('Holerite só para validação individual.'); if(inputEl) inputEl.value=''; return {ok:false}; }
+            const r=validarHolerite(texto,id,valorAlvo);
+            if(!r.ok){ alert(r.motivo); if(inputEl) inputEl.value=''; return {ok:false}; }
+            return {ok:true,tipo:'holerite',competenciaValidada:r.competenciaValidada||null};
+        }
+        const vBr=valorAlvo.toFixed(2).replace('.',',');
+        if(texto.toLowerCase().includes('neon')&&(texto.includes(vBr)||texto.includes(valorAlvo.toFixed(2))))
+            return {ok:true,tipo:'bancario',competenciaValidada:null};
+        alert(`Valor ${moneyBR(valorAlvo)} não encontrado no comprovante.`);
+    }catch(e){ alert('Erro no OCR.'); }
+    if(inputEl) inputEl.value='';
+    return {ok:false};
+}
+
+async function validarIndividual(input,id,valor){
+    overlay(true,'Validando...');
+    const r=await auditoria(input.files[0],valor,input,id,true);
+    if(r.ok){
+        const url=await uploadFile(`comprovantes/${id}_${Date.now()}`,input.files[0]);
+        await db.patch(`pensao/${id}`,{status:'pago',comprovante:url,tipoComprovante:r.tipo||'bancario',competenciaValidada:r.competenciaValidada||null,dataPagamento:new Date().toISOString(),valor});
+        await carregarParcelas();
+    }
+    overlay(false);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   LOTE
+═══════════════════════════════════════════════════════════════ */
+function simularLote(){
+    const qtd=parseInt(document.getElementById('input-qtd').value)||1;
+    const lista=parcelasLocais.filter(p=>p.status==='pendente').slice(0,qtd);
+    if(!lista.length) return alert('Nada a pagar.');
+    const soma=lista.reduce((a,x)=>a+x.valor,0);
+    const grid=document.getElementById('lista-meses-detalhe');
+    grid.innerHTML='';
+    lista.forEach(p=>{ grid.innerHTML+=`<div class="mes-tag"><strong>${p.ref}</strong><span>${moneyBR(p.valor)}</span></div>`; });
+    document.getElementById('total-lote-info').innerText=`Valor Total: ${moneyBR(soma)}`;
+    document.getElementById('box-lote').style.display='block';
+    window.loteAtivo={alvo:lista,soma:soma.toFixed(2)};
+}
+async function processarLote(input){
+    overlay(true,'Validando lote...');
+    const r=await auditoria(input.files[0],parseFloat(window.loteAtivo.soma),input,null,false);
+    if(r.ok){
+        const url=await uploadFile(`comprovantes/lote_${Date.now()}`,input.files[0]);
+        const upd={};
+        window.loteAtivo.alvo.forEach(p=>{ upd[`pensao/${p.id}`]={status:'pago',comprovante:url,dataPagamento:new Date().toISOString(),tipoComprovante:r.tipo||'bancario',valor:p.valor}; });
+        await db.patchRoot(upd);
+        alert('Sucesso! '+window.loteAtivo.alvo.length+' parcelas quitadas.');
+        document.getElementById('box-lote').style.display='none';
+        await carregarParcelas();
+    }
+    overlay(false);
+}
+
+/* ─── Corrigir valor de parcela ───────────────────────────────── */
+async function salvarCorrecao(id, valorCorreto, salBase, pct){
+    const {mes,ano}=parseId(id);
+    if(!confirm(`Fixar parcela ${String(mes).padStart(2,'0')}/${ano}:\n• Salário base: ${moneyBR(salBase)}\n• Desconto: ${pct}%\n• Pensão: ${moneyBR(valorCorreto)}\n\nSalvar no banco?`)) return;
+    overlay(true,'Corrigindo...');
+    try{
+        await db.patch(`pensao/${id}`,{
+            valor:valorCorreto,
+            salarioBase:salBase,
+            pct,
+            corrigidoEm:new Date().toISOString()
+        });
+        await carregarParcelas();
+    }catch(e){ alert('Erro: '+e.message); }
+    finally{ overlay(false); }
+}
+
+/* ─── Revogar ─────────────────────────────────────────────────── */
+async function revogar(id){
+    if(confirm('Anular pagamento desta parcela?')){
+        await db.patch(`pensao/${id}`,{status:'pendente',comprovante:null,dataPagamento:null});
+        await carregarParcelas();
+    }
+}
+
+/* ─── Init ────────────────────────────────────────────────────── */
+(async()=>{
+    await carregarStatusOficio();
+    await carregarStatusCTPS();
+    await carregarSalarioLiquido();
+    await carregarParcelas();
+})();
 </script>
 </body>
 </html>
