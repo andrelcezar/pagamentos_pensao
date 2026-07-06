@@ -1,537 +1,580 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Acompanhamento de Pensão</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-  <style>
-    :root {
-      --primary: #1e40af;
-      --primary-light: #eff6ff;
-      --success: #16a34a;
-      --success-light: #f0fdf4;
-      --danger: #dc2626;
-      --danger-light: #fef2f2;
-      --warning: #d97706;
-      --warning-light: #fffbeb;
-      --bg: #f1f5f9;
-      --card: #ffffff;
-      --text: #0f172a;
-      --muted: #64748b;
-      --border: #e2e8f0;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Inter', sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acompanhamento de Pensão</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg:#0f172a; --surface:#1e293b; --surface2:#263044;
+            --border:#334155; --text:#f1f5f9; --muted:#94a3b8;
+            --success:#10b981; --danger:#ef4444; --warning:#f59e0b;
+            --blue:#3b82f6; --purple:#8b5cf6; --indigo:#6366f1;
+        }
+        *{box-sizing:border-box;margin:0;padding:0;}
+        body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:24px 16px;}
+        .container{max-width:960px;margin:auto;}
 
-    /* ── TOP BAR ── */
-    .topbar {
-      background: var(--card);
-      border-bottom: 1px solid var(--border);
-      padding: 16px 28px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-    .topbar-title { font-size: 1.05rem; font-weight: 800; color: var(--primary); display: flex; align-items: center; gap: 10px; }
-    .topbar-title svg { flex-shrink: 0; }
-    .badge-live {
-      display: inline-flex; align-items: center; gap: 5px;
-      background: #dcfce7; color: #166534;
-      font-size: 0.7rem; font-weight: 700; padding: 3px 9px;
-      border-radius: 999px; letter-spacing: .02em;
-    }
-    .badge-live::before {
-      content: ''; width: 6px; height: 6px; border-radius: 50%;
-      background: #16a34a; display: inline-block;
-      animation: pulse 1.5s ease-in-out infinite;
-    }
-    @keyframes pulse { 0%,100%{ opacity:1; } 50%{ opacity:.3; } }
+        /* ── Header ─────────────────────────────── */
+        .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;flex-wrap:wrap;gap:12px;}
+        .header-title{font-size:1.15rem;font-weight:800;letter-spacing:-.02em;}
+        .header-title span{color:var(--blue);}
+        .live-badge{display:flex;align-items:center;gap:7px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:6px 14px;font-size:.73rem;font-weight:700;color:var(--muted);}
+        .live-dot{width:8px;height:8px;border-radius:50%;background:var(--success);animation:pulse 1.8s ease-in-out infinite;}
+        @keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.4;transform:scale(.7);}}
+        .last-update{font-size:.68rem;color:var(--muted);}
 
-    /* ── LAYOUT ── */
-    .page { max-width: 1060px; margin: 0 auto; padding: 24px 20px 48px; }
+        /* ── Cards de resumo ─────────────────────── */
+        .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px;}
+        .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden;}
+        .stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+        .stat-card.red::before{background:var(--danger);}
+        .stat-card.blue::before{background:var(--blue);}
+        .stat-card.green::before{background:var(--success);}
+        .stat-card.purple::before{background:var(--purple);}
+        .stat-card.yellow::before{background:var(--warning);}
+        .stat-label{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px;}
+        .stat-value{font-size:1.55rem;font-weight:900;line-height:1;}
+        .stat-value.red{color:var(--danger);}
+        .stat-value.blue{color:var(--blue);}
+        .stat-value.green{color:var(--success);}
+        .stat-value.purple{color:var(--purple);}
+        .stat-value.yellow{color:var(--warning);}
+        .stat-sub{font-size:.68rem;color:var(--muted);margin-top:5px;}
 
-    /* ── METRIC CARDS ── */
-    .metrics {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 14px;
-      margin-bottom: 20px;
-    }
-    .metric {
-      background: var(--card);
-      border-radius: 14px;
-      border: 1px solid var(--border);
-      padding: 18px 20px;
-      position: relative;
-      overflow: hidden;
-    }
-    .metric::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 3px;
-      border-radius: 14px 14px 0 0;
-    }
-    .metric.m-pago::before   { background: var(--success); }
-    .metric.m-pend::before   { background: var(--danger); }
-    .metric.m-total::before  { background: var(--primary); }
-    .metric.m-perc::before   { background: var(--warning); }
-    .metric-icon {
-      width: 36px; height: 36px; border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      margin-bottom: 12px;
-      font-size: 16px;
-    }
-    .metric-label { font-size: .72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
-    .metric-value { font-size: 1.65rem; font-weight: 800; line-height: 1.1; }
-    .metric-sub { font-size: .75rem; color: var(--muted); margin-top: 4px; }
-    .c-success { color: var(--success); } .c-danger { color: var(--danger); }
-    .c-primary { color: var(--primary); } .c-warning { color: var(--warning); }
-    .bg-success { background: var(--success-light); }
-    .bg-danger  { background: var(--danger-light); }
-    .bg-primary { background: var(--primary-light); }
-    .bg-warning { background: var(--warning-light); }
+        /* ── Barra de progresso ─────────────────── */
+        .progress-wrap{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:24px;}
+        .progress-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+        .progress-title{font-size:.78rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;}
+        .progress-pct{font-size:1rem;font-weight:800;color:var(--success);}
+        .progress-bar-bg{background:var(--surface2);border-radius:999px;height:10px;overflow:hidden;}
+        .progress-bar-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--blue),var(--success));transition:width .6s ease;}
+        .progress-labels{display:flex;justify-content:space-between;margin-top:6px;font-size:.66rem;color:var(--muted);}
 
-    /* ── PROGRESS BAR ── */
-    .progress-card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 14px; padding: 18px 20px; margin-bottom: 20px;
-    }
-    .progress-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
-    .progress-header span { font-size: .8rem; font-weight: 700; color: var(--muted); }
-    .progress-bar-track {
-      background: #f1f5f9; border-radius: 999px; height: 10px; overflow: hidden;
-    }
-    .progress-bar-fill {
-      height: 100%; border-radius: 999px;
-      background: linear-gradient(90deg, #16a34a, #22c55e);
-      transition: width .6s ease;
-    }
-    .progress-labels { display: flex; justify-content: space-between; margin-top: 6px; font-size: .72rem; color: var(--muted); }
+        /* ── Filtros ─────────────────────────────── */
+        .filter-bar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+        .filter-btn{padding:6px 14px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-size:.75rem;font-weight:700;cursor:pointer;transition:all .15s;}
+        .filter-btn.active{background:var(--blue);border-color:var(--blue);color:#fff;}
+        .filter-btn:hover:not(.active){border-color:var(--blue);color:var(--blue);}
 
-    /* ── CHART + TABLE GRID ── */
-    .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
-    @media (max-width: 720px) { .main-grid { grid-template-columns: 1fr; } }
+        /* ── Tabela ──────────────────────────────── */
+        .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:24px;}
+        .table-scroll{overflow-x:auto;}
+        table{width:100%;border-collapse:collapse;min-width:560px;}
+        thead th{background:var(--surface2);padding:10px 16px;text-align:left;font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);white-space:nowrap;}
+        tbody tr{border-bottom:1px solid var(--border);transition:background .1s;}
+        tbody tr:last-child{border-bottom:none;}
+        tbody tr:hover{background:var(--surface2);}
+        tbody tr.row-desemp td{border-left:3px solid var(--warning);}
+        tbody tr.row-emp td{border-left:3px solid var(--success);}
+        td{padding:10px 16px;font-size:.84rem;vertical-align:middle;}
+        .sep-row td{background:#1a2540!important;padding:6px 16px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);border-left:none!important;}
 
-    .chart-card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 14px; padding: 18px 20px;
-    }
-    .chart-card h3 { font-size: .8rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 14px; }
+        /* ── Badges ──────────────────────────────── */
+        .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-size:.7rem;font-weight:700;white-space:nowrap;}
+        .badge-pago{background:rgba(16,185,129,.15);color:#34d399;border:1px solid rgba(16,185,129,.3);}
+        .badge-pend{background:rgba(239,68,68,.12);color:#f87171;border:1px solid rgba(239,68,68,.25);}
+        .badge-desemp{background:rgba(245,158,11,.12);color:#fbbf24;border:1px solid rgba(245,158,11,.25);}
+        .badge-emp{background:rgba(16,185,129,.1);color:#6ee7b7;border:1px solid rgba(16,185,129,.2);}
+        .badge-pct{background:rgba(139,92,246,.15);color:#c4b5fd;border:1px solid rgba(139,92,246,.25);}
 
-    /* ── TIMELINE CARD ── */
-    .timeline-card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 14px; padding: 18px 20px; overflow-y: auto; max-height: 300px;
-    }
-    .timeline-card h3 { font-size: .8rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 12px; }
-    .tl-item { display: flex; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f8fafc; align-items: flex-start; }
-    .tl-item:last-child { border-bottom: none; }
-    .tl-dot {
-      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 4px;
-    }
-    .tl-dot.pago { background: var(--success); }
-    .tl-dot.pendente { background: #e2e8f0; border: 2px solid #cbd5e1; }
-    .tl-text { font-size: .82rem; line-height: 1.4; }
-    .tl-text strong { font-weight: 700; display: block; }
-    .tl-text span { color: var(--muted); font-size: .75rem; }
+        /* ── Ofício / admissão info ─────────────── */
+        .info-strip{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px;}
+        .info-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;}
+        .info-block-label{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:8px;}
+        .info-block-val{font-size:.92rem;font-weight:700;color:var(--text);}
+        .info-block-sub{font-size:.72rem;color:var(--muted);margin-top:3px;}
 
-    /* ── FILTERS ── */
-    .filters {
-      display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
-      margin-bottom: 14px;
-    }
-    .filter-btn {
-      padding: 6px 14px; border-radius: 999px; font-size: .78rem; font-weight: 700;
-      border: 1.5px solid var(--border); background: var(--card);
-      color: var(--muted); cursor: pointer; transition: all .15s;
-    }
-    .filter-btn:hover { border-color: var(--primary); color: var(--primary); }
-    .filter-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
-    .filter-select {
-      padding: 6px 12px; border-radius: 8px; font-size: .78rem; font-weight: 600;
-      border: 1.5px solid var(--border); background: var(--card); color: var(--text);
-      cursor: pointer;
-    }
-    .search-input {
-      padding: 6px 12px; border-radius: 8px; font-size: .78rem;
-      border: 1.5px solid var(--border); background: var(--card); color: var(--text);
-      outline: none; flex: 1; min-width: 140px;
-    }
-    .search-input:focus { border-color: var(--primary); }
+        /* ── Timeline mini ───────────────────────── */
+        .timeline{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:24px;}
+        .tl-dot{width:22px;height:22px;border-radius:5px;cursor:default;transition:transform .1s;flex-shrink:0;}
+        .tl-dot:hover{transform:scale(1.3);z-index:1;position:relative;}
+        .tl-dot.pago{background:var(--success);}
+        .tl-dot.pendente{background:var(--danger);}
+        .tl-dot.desemp-pago{background:#d97706;}
+        .tl-dot.desemp-pend{background:#92400e;}
+        .tl-dot.sep{background:transparent;width:8px;}
+        .timeline-label{font-size:.62rem;color:var(--muted);margin-bottom:6px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;}
 
-    /* ── TABLE ── */
-    .table-wrap {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 14px; overflow: hidden;
-    }
-    .table-header {
-      padding: 16px 20px; border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
-    }
-    .table-header-title { font-size: .85rem; font-weight: 700; }
-    .table-count { font-size: .75rem; color: var(--muted); font-weight: 600; }
-    table { width: 100%; border-collapse: collapse; }
-    th {
-      text-align: left; background: #f8fafc;
-      padding: 10px 16px; font-size: .7rem;
-      text-transform: uppercase; color: var(--muted);
-      border-bottom: 1px solid var(--border); letter-spacing: .04em;
-      white-space: nowrap;
-    }
-    td { padding: 11px 16px; border-bottom: 1px solid #f8fafc; font-size: .88rem; vertical-align: middle; }
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: #fafbfc; }
-    .badge {
-      display: inline-flex; align-items: center; gap: 5px;
-      padding: 4px 10px; border-radius: 999px;
-      font-size: .72rem; font-weight: 700;
-    }
-    .badge-pago { background: #dcfce7; color: #166534; }
-    .badge-pendente { background: #fee2e2; color: #991b1b; }
-    .badge-pago::before   { content:''; width:6px; height:6px; border-radius:50%; background:#16a34a; }
-    .badge-pendente::before { content:''; width:6px; height:6px; border-radius:50%; background:#dc2626; }
-    .link-comp { color: var(--primary); font-weight: 700; text-decoration: none; font-size: .8rem; }
-    .link-comp:hover { text-decoration: underline; }
-    .empty-state {
-      padding: 40px; text-align: center; color: var(--muted); font-size: .9rem;
-    }
+        /* ── Skeleton loader ─────────────────────── */
+        .skeleton{background:linear-gradient(90deg,var(--surface) 25%,var(--surface2) 50%,var(--surface) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:6px;height:16px;}
+        @keyframes shimmer{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
 
-    /* ── LOADING ── */
-    .skeleton { animation: shimmer 1.4s ease-in-out infinite; background: #f1f5f9; border-radius: 6px; }
-    @keyframes shimmer { 0%,100%{ opacity:1; } 50%{ opacity:.4; } }
+        /* ── Comprovante link ────────────────────── */
+        .comp-link{color:var(--blue);font-size:.7rem;text-decoration:none;font-weight:700;}
+        .comp-link:hover{text-decoration:underline;}
 
-    @media (max-width: 600px) {
-      th, td { padding: 9px 10px; font-size: .8rem; }
-      .metric-value { font-size: 1.3rem; }
-    }
-  </style>
+        /* ── Toast ───────────────────────────────── */
+        #toast{position:fixed;bottom:24px;right:24px;background:#1e3a5f;border:1px solid var(--blue);color:#bfdbfe;padding:12px 18px;border-radius:10px;font-size:.8rem;font-weight:600;display:none;z-index:9999;max-width:300px;box-shadow:0 8px 32px rgba(0,0,0,.4);}
+
+        @media(max-width:640px){
+            .info-strip{grid-template-columns:1fr;}
+            .stat-grid{grid-template-columns:1fr 1fr;}
+        }
+    </style>
 </head>
 <body>
+<div id="toast"></div>
+<div class="container">
 
-<div class="topbar">
-  <div class="topbar-title">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1e40af" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/>
-    </svg>
-    Acompanhamento de Pensão
-  </div>
-  <span class="badge-live">Atualização em tempo real</span>
-</div>
+    <!-- HEADER -->
+    <div class="header">
+        <div>
+            <div class="header-title">Pensão Alimentícia — <span>Acompanhamento</span></div>
+            <div class="last-update" id="last-update">Conectando...</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <div class="live-badge"><div class="live-dot"></div>Tempo real</div>
+            <button onclick="forcarAtualizacao()" style="background:var(--surface);border:1px solid var(--border);color:var(--muted);padding:6px 14px;border-radius:999px;font-size:.73rem;font-weight:700;cursor:pointer;">↻ Atualizar</button>
+        </div>
+    </div>
 
-<div class="page">
+    <!-- RESUMO -->
+    <div class="stat-grid" id="stat-grid">
+        <div class="stat-card red"><div class="stat-label">Atrasado (desemprego)</div><div class="skeleton" style="width:70%;height:28px;"></div><div class="skeleton" style="width:50%;height:12px;margin-top:8px;"></div></div>
+        <div class="stat-card blue"><div class="stat-label">Em aberto (empregado)</div><div class="skeleton" style="width:70%;height:28px;"></div><div class="skeleton" style="width:50%;height:12px;margin-top:8px;"></div></div>
+        <div class="stat-card green"><div class="stat-label">Total pago</div><div class="skeleton" style="width:70%;height:28px;"></div></div>
+        <div class="stat-card purple"><div class="stat-label">Desconto aplicado</div><div class="skeleton" style="width:50%;height:28px;"></div></div>
+        <div class="stat-card yellow"><div class="stat-label">Total geral em aberto</div><div class="skeleton" style="width:70%;height:28px;"></div></div>
+    </div>
 
-  <!-- METRICS -->
-  <div class="metrics">
-    <div class="metric m-pago">
-      <div class="metric-icon bg-success">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-      </div>
-      <div class="metric-label">Total pago</div>
-      <div class="metric-value c-success" id="total-pago">—</div>
-      <div class="metric-sub" id="sub-pagas">— parcelas</div>
+    <!-- INFO STRIP -->
+    <div class="info-strip" id="info-strip">
+        <div class="info-block">
+            <div class="info-block-label">⚖️ Ofício de Pensão</div>
+            <div class="info-block-val" id="info-oficio">Carregando...</div>
+            <div class="info-block-sub" id="info-oficio-sub"></div>
+        </div>
+        <div class="info-block">
+            <div class="info-block-label">🪪 CTPS — Admissão</div>
+            <div class="info-block-val" id="info-admissao">Carregando...</div>
+            <div class="info-block-sub" id="info-admissao-sub"></div>
+        </div>
     </div>
-    <div class="metric m-pend">
-      <div class="metric-icon bg-danger">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      </div>
-      <div class="metric-label">Total pendente</div>
-      <div class="metric-value c-danger" id="total-pendente">—</div>
-      <div class="metric-sub" id="sub-pendentes">— parcelas</div>
-    </div>
-    <div class="metric m-total">
-      <div class="metric-icon bg-primary">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1e40af" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-      </div>
-      <div class="metric-label">Total geral</div>
-      <div class="metric-value c-primary" id="total-geral">—</div>
-      <div class="metric-sub" id="sub-total">— parcelas no total</div>
-    </div>
-    <div class="metric m-perc">
-      <div class="metric-icon bg-warning">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>
-      </div>
-      <div class="metric-label">Progresso geral</div>
-      <div class="metric-value c-warning" id="perc-pago">—%</div>
-      <div class="metric-sub">parcelas quitadas</div>
-    </div>
-  </div>
 
-  <!-- PROGRESS BAR -->
-  <div class="progress-card">
-    <div class="progress-header">
-      <strong style="font-size:.85rem;">Progresso do pagamento</strong>
-      <span id="prog-label">Carregando...</span>
+    <!-- BARRA DE PROGRESSO -->
+    <div class="progress-wrap">
+        <div class="progress-header">
+            <div class="progress-title">Progresso de quitação</div>
+            <div class="progress-pct" id="prog-pct">–%</div>
+        </div>
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="prog-fill" style="width:0%"></div></div>
+        <div class="progress-labels"><span id="prog-label-left">–</span><span id="prog-label-right">–</span></div>
     </div>
-    <div class="progress-bar-track">
-      <div class="progress-bar-fill" id="prog-fill" style="width:0%"></div>
-    </div>
-    <div class="progress-labels">
-      <span>Início: março/2024</span>
-      <span id="prog-right">—</span>
-    </div>
-  </div>
 
-  <!-- CHART + TIMELINE -->
-  <div class="main-grid">
-    <div class="chart-card">
-      <h3>Pagamentos por ano</h3>
-      <div style="position:relative;height:220px;">
-        <canvas id="chart-anual" role="img" aria-label="Gráfico de barras com pagamentos por ano"></canvas>
-      </div>
+    <!-- TIMELINE -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:24px;">
+        <div class="timeline-label">Mapa de parcelas</div>
+        <div class="timeline" id="timeline"></div>
+        <div style="display:flex;gap:16px;margin-top:10px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:6px;font-size:.68rem;color:var(--muted);"><div style="width:12px;height:12px;border-radius:3px;background:var(--success);"></div>Empregado pago</div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:.68rem;color:var(--muted);"><div style="width:12px;height:12px;border-radius:3px;background:var(--danger);"></div>Empregado pendente</div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:.68rem;color:var(--muted);"><div style="width:12px;height:12px;border-radius:3px;background:#d97706;"></div>Desemprego pago</div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:.68rem;color:var(--muted);"><div style="width:12px;height:12px;border-radius:3px;background:#92400e;"></div>Desemprego pendente</div>
+        </div>
     </div>
-    <div class="timeline-card" id="timeline-box">
-      <h3>Últimos pagamentos</h3>
-      <div id="timeline-list"><div style="color:var(--muted);font-size:.82rem;">Carregando...</div></div>
-    </div>
-  </div>
 
-  <!-- TABLE SECTION -->
-  <div class="table-wrap">
-    <div class="table-header">
-      <div>
-        <div class="table-header-title">Parcelas</div>
-        <div class="table-count" id="table-count"></div>
-      </div>
-      <div class="filters">
-        <input class="search-input" id="search" placeholder="Buscar mês/ano..." oninput="aplicarFiltros()">
-        <button class="filter-btn active" onclick="setFiltro('todos')">Todos</button>
-        <button class="filter-btn" onclick="setFiltro('pago')">Pagos</button>
-        <button class="filter-btn" onclick="setFiltro('pendente')">Pendentes</button>
-        <select class="filter-select" id="filtro-ano" onchange="aplicarFiltros()">
-          <option value="">Todos os anos</option>
-        </select>
-      </div>
+    <!-- FILTROS -->
+    <div class="filter-bar">
+        <button class="filter-btn active" data-filter="todos" onclick="setFiltro('todos')">Todos</button>
+        <button class="filter-btn" data-filter="pendente" onclick="setFiltro('pendente')">Pendentes</button>
+        <button class="filter-btn" data-filter="pago" onclick="setFiltro('pago')">Pagos</button>
+        <button class="filter-btn" data-filter="desemprego" onclick="setFiltro('desemprego')">Desemprego</button>
+        <button class="filter-btn" data-filter="empregado" onclick="setFiltro('empregado')">Empregado</button>
     </div>
-    <div style="overflow-x:auto;">
-      <table>
-        <thead>
-          <tr>
-            <th>Mês/Ano</th>
-            <th>Valor</th>
-            <th>Status</th>
-            <th>Data do pagamento</th>
-            <th>Comprovante</th>
-          </tr>
-        </thead>
-        <tbody id="corpo-tabela"></tbody>
-      </table>
-    </div>
-    <div id="estado-vazio" class="empty-state" style="display:none;">Nenhuma parcela encontrada.</div>
-  </div>
 
-</div>
+    <!-- TABELA -->
+    <div class="table-wrap">
+        <div class="table-scroll">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Mês/Ano</th>
+                        <th>Período</th>
+                        <th>Salário base</th>
+                        <th>%</th>
+                        <th>Valor pensão</th>
+                        <th>Status</th>
+                        <th>Comprovante</th>
+                        <th>Data pagamento</th>
+                    </tr>
+                </thead>
+                <tbody id="corpo-tabela">
+                    <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted);">Carregando parcelas...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div><!-- /container -->
 
 <script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyCzAXQ4DrPvIIgOdMY-14b8nuyVZN0dU54",
-    authDomain: "pensao-fd881.firebaseapp.com",
-    databaseURL: "https://pensao-fd881-default-rtdb.firebaseio.com",
-    projectId: "pensao-fd881",
-    storageBucket: "pensao-fd881.firebasestorage.app",
-    messagingSenderId: "483959140139",
-    appId: "1:483959140139:web:e08f75dbe8a4ef845a1f6e"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
+/* ═══════════════════════════════════════════════════════════════
+   CONFIG
+═══════════════════════════════════════════════════════════════ */
+const DB_URL = 'https://pensao-11739-default-rtdb.firebaseio.com';
+const SALARIO_MINIMO = {2024:1412, 2025:1518, 2026:1621};
+const INICIO_DESEMPREGO = new Date(2024,1,1);
+const hoje = new Date();
+const nomesMeses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 
-  const dataInicio = new Date(2024, 2, 1);
-  const hoje = new Date();
-  let todasParcelas = [];
-  let filtroStatus = 'todos';
-  let chartAnual = null;
+/* ─── Estado ─────────────────────────────────────────────────── */
+let filtroAtivo = 'todos';
+let dadosGlobais = { parcelas:[], oficio:{}, ctps:{} };
+let intervalId = null;
+let streamController = null;
 
-  function getValorAno(ano) {
-    if (ano <= 2024) return 1412 * 0.3;
-    if (ano === 2025) return 1518 * 0.3;
-    return 1621 * 0.3;
-  }
-
-  function moneyBR(v) {
+/* ─── Utilitários ────────────────────────────────────────────── */
+async function dbGet(path) {
+    const r = await fetch(`${DB_URL}/${path}.json`);
+    if (!r.ok) throw new Error(`DB ${r.status}`);
+    return r.json();
+}
+function moneyBR(v) {
     return `R$ ${Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
-  }
+}
+function buildId(mes,ano) { return `p-${ano}-${mes-1}`; }
+function parseId(id) { const p=id.replace('p-','').split('-'); return {ano:Number(p[0]),mes:Number(p[1])+1}; }
+function salMin(ano) { return SALARIO_MINIMO[ano]||SALARIO_MINIMO[2026]; }
+function dateToLabel(d) { return d.toLocaleString('pt-BR',{month:'long'})+'/'+d.getFullYear(); }
 
-  function formatarData(iso) {
-    if (!iso) return '—';
-    const d = new Date(iso);
-    if (isNaN(d)) return '—';
-    return d.toLocaleDateString('pt-BR');
-  }
+function toast(msg, ms=3000) {
+    const el=document.getElementById('toast');
+    el.innerText=msg; el.style.display='block';
+    clearTimeout(el._t);
+    el._t=setTimeout(()=>el.style.display='none', ms);
+}
 
-  function obterTodasParcelas(nuvem = {}) {
-    const lista = [];
-    let d = new Date(dataInicio);
-    while (d <= hoje) {
-      const ano = d.getFullYear();
-      const mi = d.getMonth();
-      const id = `p-${ano}-${mi}`;
-      const info = nuvem[id] || { status: 'pendente' };
-      const mes = d.toLocaleString('pt-BR', { month: 'long' });
-      lista.push({
-        id, ano, mi,
-        ref: `${mes}/${ano}`,
-        valor: Number(info.valor ?? getValorAno(ano)),
-        status: info.status || 'pendente',
-        dataPagamento: info.dataPagamento || null,
-        comprovante: info.comprovante || null
-      });
-      d.setMonth(d.getMonth() + 1);
+function setFiltro(f) {
+    filtroAtivo=f;
+    document.querySelectorAll('.filter-btn').forEach(b=>{
+        b.classList.toggle('active', b.dataset.filter===f);
+    });
+    renderTabela();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BUSCAR DADOS
+═══════════════════════════════════════════════════════════════ */
+async function buscarTudo() {
+    const [pensao, oficio, ctps] = await Promise.all([
+        dbGet('pensao').catch(()=>({})),
+        dbGet('oficio').catch(()=>({})),
+        dbGet('ctps').catch(()=>({}))
+    ]);
+    return { pensao:pensao||{}, oficio:oficio||{}, ctps:ctps||{} };
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MONTAR PARCELAS (mesma lógica do admin)
+═══════════════════════════════════════════════════════════════ */
+function montarParcelas(pensaoNuvem, oficio, ctps) {
+    const pct = oficio?.pct || 30;
+    let dataAdm = null;
+    if (ctps?.admissao) {
+        dataAdm = new Date(ctps.admissao + 'T00:00:00');
     }
-    const ids = new Set(lista.map(p => p.id));
-    Object.entries(nuvem).forEach(([id, info]) => {
-      if (!ids.has(id) && /^p-\d{4}-\d{1,2}$/.test(id)) {
-        const [, ano, mi] = id.split('-').map(Number);
-        const dt = new Date(ano, mi, 1);
-        const mes = dt.toLocaleString('pt-BR', { month: 'long' });
+    const admissao = dataAdm
+        ? new Date(dataAdm.getFullYear(), dataAdm.getMonth(), 1)
+        : null;
+
+    const fimDesemp = admissao
+        ? new Date(admissao.getFullYear(), admissao.getMonth()-1, 1)
+        : new Date(2026,5,1);
+
+    const lista = [];
+
+    // Desemprego
+    let d = new Date(INICIO_DESEMPREGO);
+    while (d <= fimDesemp) {
+        const ano=d.getFullYear(), mesIdx=d.getMonth();
+        const id=buildId(mesIdx+1,ano);
+        const info=pensaoNuvem[id]||{};
+        const salBase=salMin(ano);
+        const valor=+(info.valor ?? salBase*0.3).toFixed ? Number((info.valor ?? +(salBase*0.3).toFixed(2))) : salBase*0.3;
         lista.push({
-          id, ano, mi,
-          ref: `${mes}/${ano}`,
-          valor: Number(info.valor ?? getValorAno(ano)),
-          status: info.status || 'pendente',
-          dataPagamento: info.dataPagamento || null,
-          comprovante: info.comprovante || null
+            id, ano, mes:mesIdx+1,
+            label: dateToLabel(d),
+            tipo:'desemprego',
+            salBase, pct:30,
+            valor: Number(info.valor ?? +(salBase*0.3).toFixed(2)),
+            status: info.status||'pendente',
+            comprovante: info.comprovante||null,
+            dataPagamento: info.dataPagamento||null,
+            tipoComp: info.tipoComprovante||null
         });
-      }
-    });
-    lista.sort((a, b) => new Date(b.ano, b.mi) - new Date(a.ano, a.mi));
-    return lista;
-  }
+        d.setMonth(d.getMonth()+1);
+    }
 
-  function setFiltro(s) {
-    filtroStatus = s;
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    event.target.classList.add('active');
-    aplicarFiltros();
-  }
-
-  function aplicarFiltros() {
-    const busca = document.getElementById('search').value.toLowerCase().trim();
-    const anoFiltro = document.getElementById('filtro-ano').value;
-    let lista = todasParcelas;
-    if (filtroStatus !== 'todos') lista = lista.filter(p => p.status === filtroStatus);
-    if (anoFiltro) lista = lista.filter(p => String(p.ano) === anoFiltro);
-    if (busca) lista = lista.filter(p => p.ref.toLowerCase().includes(busca));
-    renderTabela(lista);
-  }
-
-  function renderTabela(lista) {
-    const corpo = document.getElementById('corpo-tabela');
-    const vazio = document.getElementById('estado-vazio');
-    const count = document.getElementById('table-count');
-    corpo.innerHTML = '';
-    if (!lista.length) { vazio.style.display = 'block'; count.innerText = ''; return; }
-    vazio.style.display = 'none';
-    count.innerText = `${lista.length} parcela${lista.length !== 1 ? 's' : ''}`;
-    lista.forEach(item => {
-      const pago = item.status === 'pago';
-      corpo.innerHTML += `
-        <tr>
-          <td style="text-transform:capitalize; font-weight:600;">${item.ref}</td>
-          <td style="font-weight:700;">${moneyBR(item.valor)}</td>
-          <td><span class="badge badge-${item.status}">${item.status.toUpperCase()}</span></td>
-          <td style="color:var(--muted);">${formatarData(item.dataPagamento)}</td>
-          <td>${item.comprovante
-            ? `<a class="link-comp" href="${item.comprovante}" target="_blank" rel="noopener">Ver comprovante</a>`
-            : '<span style="color:var(--muted);font-size:.8rem;">—</span>'}</td>
-        </tr>`;
-    });
-  }
-
-  function renderTimeline(parcelas) {
-    const pagos = parcelas.filter(p => p.status === 'pago')
-      .sort((a, b) => new Date(b.dataPagamento) - new Date(a.dataPagamento))
-      .slice(0, 8);
-    const list = document.getElementById('timeline-list');
-    if (!pagos.length) { list.innerHTML = '<span style="color:var(--muted);font-size:.82rem;">Nenhum pagamento registrado.</span>'; return; }
-    list.innerHTML = pagos.map(p => `
-      <div class="tl-item">
-        <div class="tl-dot pago"></div>
-        <div class="tl-text">
-          <strong style="text-transform:capitalize;">${p.ref}</strong>
-          <span>${moneyBR(p.valor)} · ${formatarData(p.dataPagamento)}</span>
-        </div>
-      </div>`).join('');
-  }
-
-  function renderChart(parcelas) {
-    const anos = [...new Set(parcelas.map(p => p.ano))].sort();
-    const pagoPorAno = anos.map(a => parcelas.filter(p => p.ano === a && p.status === 'pago').reduce((s, p) => s + p.valor, 0));
-    const pendPorAno = anos.map(a => parcelas.filter(p => p.ano === a && p.status !== 'pago').reduce((s, p) => s + p.valor, 0));
-    if (chartAnual) chartAnual.destroy();
-    chartAnual = new Chart(document.getElementById('chart-anual'), {
-      type: 'bar',
-      data: {
-        labels: anos.map(String),
-        datasets: [
-          { label: 'Pago', data: pagoPorAno, backgroundColor: '#bbf7d0', borderColor: '#16a34a', borderWidth: 1.5, borderRadius: 5 },
-          { label: 'Pendente', data: pendPorAno, backgroundColor: '#fecaca', borderColor: '#dc2626', borderWidth: 1.5, borderRadius: 5 }
-        ]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { grid: { display: false }, ticks: { font: { size: 12 } } },
-          y: {
-            grid: { color: '#f1f5f9' },
-            ticks: {
-              font: { size: 11 },
-              callback: v => `R$ ${(v/1).toLocaleString('pt-BR',{minimumFractionDigits:0})}`
-            }
-          }
+    // Empregado
+    if (admissao) {
+        let e = new Date(admissao);
+        while (e <= hoje) {
+            const ano=e.getFullYear(), mesIdx=e.getMonth();
+            const id=buildId(mesIdx+1,ano);
+            const info=pensaoNuvem[id]||{};
+            const salBase=Number(info.salarioBase ?? salMin(ano));
+            lista.push({
+                id, ano, mes:mesIdx+1,
+                label: dateToLabel(e),
+                tipo:'empregado',
+                salBase, pct,
+                valor: Number(info.valor ?? +(salBase*(pct/100)).toFixed(2)),
+                status: info.status||'pendente',
+                comprovante: info.comprovante||null,
+                dataPagamento: info.dataPagamento||null,
+                tipoComp: info.tipoComprovante||null
+            });
+            e.setMonth(e.getMonth()+1);
         }
-      }
-    });
-  }
+    }
 
-  function preencherFiltroAno(parcelas) {
-    const sel = document.getElementById('filtro-ano');
-    const anos = [...new Set(parcelas.map(p => p.ano))].sort();
-    sel.innerHTML = '<option value="">Todos os anos</option>' +
-      anos.map(a => `<option value="${a}">${a}</option>`).join('');
-  }
+    return { lista, pct, admissao };
+}
 
-  function renderizar(nuvem = {}) {
-    todasParcelas = obterTodasParcelas(nuvem);
-    const total = todasParcelas.length;
-    const pagas = todasParcelas.filter(p => p.status === 'pago');
-    const pendentes = todasParcelas.filter(p => p.status !== 'pago');
-    const totalPago = pagas.reduce((s, p) => s + p.valor, 0);
-    const totalPend = pendentes.reduce((s, p) => s + p.valor, 0);
-    const perc = total ? Math.round((pagas.length / total) * 100) : 0;
+/* ═══════════════════════════════════════════════════════════════
+   RENDER
+═══════════════════════════════════════════════════════════════ */
+function renderTudo(raw) {
+    const { pensao, oficio, ctps } = raw;
+    const { lista, pct, admissao } = montarParcelas(pensao, oficio, ctps);
+    dadosGlobais = { parcelas:lista, oficio, ctps };
 
-    document.getElementById('total-pago').innerText = moneyBR(totalPago);
-    document.getElementById('total-pendente').innerText = moneyBR(totalPend);
-    document.getElementById('total-geral').innerText = moneyBR(totalPago + totalPend);
-    document.getElementById('perc-pago').innerText = `${perc}%`;
-    document.getElementById('sub-pagas').innerText = `${pagas.length} parcela${pagas.length !== 1 ? 's' : ''}`;
-    document.getElementById('sub-pendentes').innerText = `${pendentes.length} parcela${pendentes.length !== 1 ? 's' : ''}`;
-    document.getElementById('sub-total').innerText = `${total} parcelas no total`;
-    document.getElementById('prog-fill').style.width = perc + '%';
-    document.getElementById('prog-label').innerText = `${pagas.length} de ${total} pagas`;
-    const ult = pagas.sort((a,b) => new Date(b.dataPagamento)-new Date(a.dataPagamento))[0];
-    document.getElementById('prog-right').innerText = ult
-      ? `Último pagamento: ${ult.ref}`
-      : 'Nenhum pagamento registrado';
+    renderResumo(lista, oficio, ctps, pct, admissao);
+    renderInfoStrip(oficio, ctps, pct, admissao);
+    renderTimeline(lista);
+    renderTabela();
 
-    preencherFiltroAno(todasParcelas);
-    aplicarFiltros();
-    renderTimeline(todasParcelas);
-    renderChart(todasParcelas);
-  }
+    // Atualiza timestamp
+    const now = new Date().toLocaleTimeString('pt-BR');
+    document.getElementById('last-update').innerText = `Última atualização: ${now}`;
+}
 
-  db.ref('pensao').on('value', snap => renderizar(snap.val() || {}));
+function renderResumo(lista, oficio, ctps, pct, admissao) {
+    const totalAtrasado = lista.filter(p=>p.tipo==='desemprego'&&p.status==='pendente').reduce((a,x)=>a+x.valor,0);
+    const totalEmpregado= lista.filter(p=>p.tipo==='empregado'&&p.status==='pendente').reduce((a,x)=>a+x.valor,0);
+    const totalPago     = lista.filter(p=>p.status==='pago').reduce((a,x)=>a+x.valor,0);
+    const totalAberto   = totalAtrasado + totalEmpregado;
+    const qtdPago       = lista.filter(p=>p.status==='pago').length;
+    const qtdTotal      = lista.length;
+    const progPct       = qtdTotal ? Math.round((qtdPago/qtdTotal)*100) : 0;
+
+    const periodoAtras = admissao && lista.filter(p=>p.tipo==='desemprego').length
+        ? `fev/2024 – ${lista.filter(p=>p.tipo==='desemprego').slice(-1)[0].label}`
+        : 'fev/2024 – jun/2026';
+    const periodoEmp = admissao && lista.filter(p=>p.tipo==='empregado').length
+        ? `${lista.filter(p=>p.tipo==='empregado')[0].label} – ${lista.filter(p=>p.tipo==='empregado').slice(-1)[0].label}`
+        : '–';
+
+    document.getElementById('stat-grid').innerHTML = `
+        <div class="stat-card red">
+            <div class="stat-label">Atrasado (desemprego)</div>
+            <div class="stat-value red">${moneyBR(totalAtrasado)}</div>
+            <div class="stat-sub">${periodoAtras}</div>
+        </div>
+        <div class="stat-card blue">
+            <div class="stat-label">Em aberto (empregado)</div>
+            <div class="stat-value blue">${moneyBR(totalEmpregado)}</div>
+            <div class="stat-sub">${periodoEmp}</div>
+        </div>
+        <div class="stat-card green">
+            <div class="stat-label">Total pago</div>
+            <div class="stat-value green">${moneyBR(totalPago)}</div>
+            <div class="stat-sub">${qtdPago} parcela(s)</div>
+        </div>
+        <div class="stat-card purple">
+            <div class="stat-label">Desconto aplicado</div>
+            <div class="stat-value purple">${pct}%</div>
+            <div class="stat-sub">${oficio?.processo||'sobre salário real'}</div>
+        </div>
+        <div class="stat-card yellow">
+            <div class="stat-label">Total geral em aberto</div>
+            <div class="stat-value" style="color:var(--warning);">${moneyBR(totalAberto)}</div>
+            <div class="stat-sub">${qtdTotal-qtdPago} pendente(s)</div>
+        </div>
+    `;
+
+    // Barra de progresso
+    document.getElementById('prog-pct').innerText = progPct+'%';
+    document.getElementById('prog-fill').style.width = progPct+'%';
+    document.getElementById('prog-label-left').innerText = `${qtdPago} pago(s)`;
+    document.getElementById('prog-label-right').innerText = `${qtdTotal} parcelas total`;
+}
+
+function renderInfoStrip(oficio, ctps, pct, admissao) {
+    // Ofício
+    const oEl = document.getElementById('info-oficio');
+    const oSub = document.getElementById('info-oficio-sub');
+    if (oficio?.pct) {
+        oEl.innerHTML = `<span style="color:var(--purple);font-size:1.3rem;font-weight:900;">${oficio.pct}%</span> de desconto`;
+        oSub.innerText = oficio.juizo || oficio.processo || 'Ofício cadastrado';
+    } else {
+        oEl.innerHTML = `<span style="color:var(--muted);">30% padrão</span>`;
+        oSub.innerText = 'Nenhum ofício cadastrado';
+    }
+
+    // Admissão
+    const aEl = document.getElementById('info-admissao');
+    const aSub = document.getElementById('info-admissao-sub');
+    if (ctps?.admissao) {
+        const [ano,mes,dia] = ctps.admissao.split('-');
+        aEl.innerHTML = `${dia}/${mes}/${ano}`;
+        aSub.innerText = ctps.nomeArquivo ? `Arquivo: ${ctps.nomeArquivo}` : 'CTPS cadastrada';
+    } else {
+        aEl.innerHTML = `<span style="color:var(--muted);">Não informada</span>`;
+        aSub.innerText = 'Cadastre a CTPS no painel admin';
+    }
+}
+
+function renderTimeline(lista) {
+    const tl = document.getElementById('timeline');
+    let html = '';
+    let tipoAnterior = null;
+
+    for (const p of lista) {
+        if (tipoAnterior && tipoAnterior !== p.tipo) {
+            html += `<div class="tl-dot sep" title=""></div>`;
+        }
+        const cls = p.tipo === 'desemprego'
+            ? (p.status==='pago'?'desemp-pago':'desemp-pend')
+            : (p.status==='pago'?'pago':'pendente');
+        const label = `${p.label} — ${moneyBR(p.valor)} — ${p.status.toUpperCase()}`;
+        html += `<div class="tl-dot ${cls}" title="${label}"></div>`;
+        tipoAnterior = p.tipo;
+    }
+
+    tl.innerHTML = html;
+}
+
+function renderTabela() {
+    const corpo = document.getElementById('corpo-tabela');
+    const lista = dadosGlobais.parcelas;
+
+    let filtradas = lista;
+    if (filtroAtivo === 'pendente')   filtradas = lista.filter(p=>p.status==='pendente');
+    if (filtroAtivo === 'pago')       filtradas = lista.filter(p=>p.status==='pago');
+    if (filtroAtivo === 'desemprego') filtradas = lista.filter(p=>p.tipo==='desemprego');
+    if (filtroAtivo === 'empregado')  filtradas = lista.filter(p=>p.tipo==='empregado');
+
+    if (!filtradas.length) {
+        corpo.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted);">Nenhuma parcela encontrada.</td></tr>`;
+        return;
+    }
+
+    let html = '';
+    let tipoAtual = null;
+
+    for (const p of filtradas) {
+        // Separador de seção
+        if (p.tipo !== tipoAtual && filtroAtivo === 'todos') {
+            tipoAtual = p.tipo;
+            const sepLabel = p.tipo === 'desemprego'
+                ? '📛 Período Desemprego — 30% salário mínimo'
+                : `✅ Período Empregado — ${dadosGlobais.oficio?.pct||30}% salário real`;
+            html += `<tr class="sep-row"><td colspan="8">${sepLabel}</td></tr>`;
+        }
+
+        const isPago = p.status === 'pago';
+        const statusBadge = isPago
+            ? `<span class="badge badge-pago">✓ Pago</span>`
+            : `<span class="badge badge-pend">● Pendente</span>`;
+        const tipoBadge = p.tipo === 'desemprego'
+            ? `<span class="badge badge-desemp">Desemprego</span>`
+            : `<span class="badge badge-emp">Empregado</span>`;
+        const compLink = p.comprovante
+            ? `<a href="${p.comprovante}" target="_blank" class="comp-link">📎 Ver</a>`
+            : `<span style="color:var(--muted);font-size:.72rem;">–</span>`;
+        const dataPag = p.dataPagamento
+            ? new Date(p.dataPagamento).toLocaleDateString('pt-BR')
+            : '–';
+
+        html += `<tr class="row-${p.tipo}">
+            <td style="text-transform:capitalize;font-weight:600;">${p.label}</td>
+            <td>${tipoBadge}</td>
+            <td style="color:var(--muted);">${moneyBR(p.salBase)}</td>
+            <td><span class="badge badge-pct">${p.pct}%</span></td>
+            <td style="font-weight:700;color:${isPago?'var(--success)':'var(--text)'};">${moneyBR(p.valor)}</td>
+            <td>${statusBadge}</td>
+            <td>${compLink}</td>
+            <td style="color:var(--muted);font-size:.78rem;">${dataPag}</td>
+        </tr>`;
+    }
+
+    corpo.innerHTML = html;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TEMPO REAL — SSE (Server-Sent Events do Firebase REST)
+═══════════════════════════════════════════════════════════════ */
+function iniciarSSE() {
+    // Firebase Realtime Database suporta SSE via Accept: text/event-stream
+    try {
+        if (streamController) streamController.abort();
+        streamController = new AbortController();
+
+        const url = `${DB_URL}/.json`;
+        const evtSource = new EventSource(url + '?event=put');
+
+        // EventSource nativo não funciona com Firebase REST diretamente
+        // Usamos polling inteligente de 5s como fallback confiável
+        evtSource.onerror = () => evtSource.close();
+        evtSource.close();
+    } catch(e) {}
+
+    // Polling a cada 5 segundos
+    if (intervalId) clearInterval(intervalId);
+    intervalId = setInterval(async () => {
+        try {
+            const raw = await buscarTudo();
+            const prevJson = JSON.stringify(dadosGlobais.parcelas.map(p=>({id:p.id,status:p.status,valor:p.valor})));
+            renderTudo(raw);
+            const newJson  = JSON.stringify(dadosGlobais.parcelas.map(p=>({id:p.id,status:p.status,valor:p.valor})));
+            if (prevJson !== newJson && prevJson !== '[]') {
+                toast('🔄 Dados atualizados!');
+            }
+        } catch(e) {
+            document.getElementById('last-update').innerText = 'Erro de conexão — reconectando...';
+        }
+    }, 5000);
+}
+
+async function forcarAtualizacao() {
+    document.getElementById('last-update').innerText = 'Atualizando...';
+    try {
+        const raw = await buscarTudo();
+        renderTudo(raw);
+        toast('✓ Atualizado');
+    } catch(e) {
+        document.getElementById('last-update').innerText = 'Erro ao atualizar';
+    }
+}
+
+/* ─── Init ────────────────────────────────────────────────────── */
+(async () => {
+    try {
+        const raw = await buscarTudo();
+        renderTudo(raw);
+        iniciarSSE();
+    } catch(e) {
+        document.getElementById('corpo-tabela').innerHTML =
+            `<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--danger);">
+                ⚠️ Erro ao conectar ao banco de dados.<br>
+                <small style="color:var(--muted);">${e.message}</small>
+            </td></tr>`;
+        document.getElementById('last-update').innerText = 'Erro de conexão';
+    }
+})();
+
+// Pausa polling quando aba está inativa, retoma ao voltar
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        clearInterval(intervalId);
+    } else {
+        forcarAtualizacao();
+        iniciarSSE();
+    }
+});
 </script>
 </body>
 </html>
