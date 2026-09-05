@@ -132,7 +132,7 @@
             <div id="oficio-manual" style="display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">
                 <div class="field" style="margin-bottom:8px;">
                     <label>% de desconto (ex: 30)</label>
-                    <input type="number" id="manual-pct" min="1" max="100" placeholder="30" style="width:100px;">
+                    <input type="number" id="manual-pct" min="1" max="100" placeholder="20" style="width:100px;">
                 </div>
                 <div class="field" style="margin-bottom:8px;">
                     <label>Número do processo</label>
@@ -150,7 +150,7 @@
             ✔ <strong>Percentual de desconto</strong> — usado automaticamente em todos os cálculos<br>
             ✔ <strong>Número do processo</strong><br>
             ✔ <strong>Juízo / Vara</strong><br><br>
-            O % extraído substitui o valor fixo de 30% e passa a ser o padrão para todas as parcelas do período empregado.<br><br>
+            O % extraído substitui o valor fixo de 20% (padrão atual, conforme ofício do processo 1014868-19.2021.8.26.0005) e passa a ser o padrão para todas as parcelas do período empregado.<br><br>
             No período de desemprego o cálculo permanece em <strong>30% do salário mínimo</strong>, conforme jurisprudência padrão.
         </div>
     </div>
@@ -314,7 +314,7 @@ const SALARIO_MINIMO    = {2024:1412, 2025:1518, 2026:1621};
 const hoje = new Date();
 let parcelasLocais   = [];
 let dataAdmissaoGlobal = null;  // Date|null
-let pctDescontoGlobal  = 30;    // número (ex: 30 = 30%)
+let pctDescontoGlobal  = 20;    // número (ex: 20 = 20%) — conforme ofício do processo 1014868-19.2021.8.26.0005 (3ª Vara da Família e Sucessões, Foro Regional V - São Miguel Paulista/SP)
 const nomesMeses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 
 /* ═══════════════════════════════════════════════════════════════
@@ -481,7 +481,7 @@ function toggleOficioManual(forcar=null){
     const mostrar = forcar!==null ? forcar : el.style.display==='none';
     el.style.display=mostrar?'block':'none';
     if(mostrar){
-        document.getElementById('manual-pct').value=pctDescontoGlobal||30;
+        document.getElementById('manual-pct').value=pctDescontoGlobal||20;
     }
 }
 
@@ -507,9 +507,9 @@ async function carregarStatusOficio(){
     try{
         const d=await db.get('oficio');
         if(!d||!d.pct){
-            pctDescontoGlobal=30;
-            el.innerHTML=`<span class="badge badge-gray">Nenhum ofício cadastrado — usando 30% padrão</span>`;
-            document.getElementById('stat-pct').innerText='30%';
+            pctDescontoGlobal=20;
+            el.innerHTML=`<span class="badge badge-gray">Nenhum ofício cadastrado — usando 20% padrão (processo 1014868-19.2021.8.26.0005)</span>`;
+            document.getElementById('stat-pct').innerText='20%';
             document.getElementById('stat-pct-label').innerText='Padrão (sem ofício)';
         } else {
             pctDescontoGlobal=d.pct;
@@ -1016,13 +1016,16 @@ function extrairSalarios(txt){
     return { liquido, bruto };
 }
 
+const KW_PENSAO_HOLERITE=['pensao judicial','pensao salarial','pensao alimenticia'];
 function extrairValorPensao(txt){
     for(const linha of txt.split(/\n+/).map(x=>x.trim()).filter(Boolean)){
-        if(norm(linha).includes('pensao judicial')){
+        const n=norm(linha);
+        if(KW_PENSAO_HOLERITE.some(kw=>n.includes(kw))){
             const vals=parseCurrency(linha); if(vals.length) return vals[vals.length-1];
         }
     }
-    if(norm(txt).includes('pensao judicial')){
+    const tn=norm(txt);
+    if(KW_PENSAO_HOLERITE.some(kw=>tn.includes(kw))){
         const vals=parseCurrency(txt); if(vals.length) return vals[vals.length-1];
     }
     return null;
@@ -1165,7 +1168,7 @@ function validarHolerite(texto,id,valorAlvo){
         if(Math.abs(vp-valorAlvo)<=5) return {ok:true,competenciaValidada:`${String(comp.mes).padStart(2,'0')}/${comp.ano}`};
         return {ok:false,motivo:`Valor lido (${moneyBR(vp)}) diverge da parcela.`};
     }
-    if(norm(texto).includes('pensao judicial')) return {ok:true,competenciaValidada:`${String(comp.mes).padStart(2,'0')}/${comp.ano}`};
+    if(KW_PENSAO_HOLERITE.some(kw=>norm(texto).includes(kw))) return {ok:true,competenciaValidada:`${String(comp.mes).padStart(2,'0')}/${comp.ano}`};
     return {ok:false,motivo:'Sem evidência de Pensão Judicial.'};
 }
 
