@@ -17,17 +17,20 @@
         .container{max-width:960px;margin:auto;}
 
         /* ── Header ─────────────────────────────── */
-        .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;flex-wrap:wrap;gap:12px;}
-        .header-title{font-size:1.15rem;font-weight:800;letter-spacing:-.02em;}
+        .header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:28px;flex-wrap:wrap;gap:12px;}
+        .header-info{flex:1 1 260px;min-width:0;}
+        .header-title{font-size:1.25rem;font-weight:800;letter-spacing:-.02em;}
         .header-title span{color:var(--blue);}
+        .header-subtitle{font-size:.72rem;color:var(--muted);margin-top:4px;}
         .live-badge{display:flex;align-items:center;gap:7px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:6px 14px;font-size:.73rem;font-weight:700;color:var(--muted);}
         .live-dot{width:8px;height:8px;border-radius:50%;background:var(--success);animation:pulse 1.8s ease-in-out infinite;}
         @keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.4;transform:scale(.7);}}
-        .last-update{font-size:.68rem;color:var(--muted);}
+        .last-update{font-size:.68rem;color:var(--muted);margin-top:6px;}
 
         /* ── Cards de resumo ─────────────────────── */
         .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px;}
-        .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden;}
+        .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden;transition:transform .15s,border-color .15s;}
+        .stat-card:hover{transform:translateY(-2px);border-color:var(--blue);}
         .stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
         .stat-card.red::before{background:var(--danger);}
         .stat-card.blue::before{background:var(--blue);}
@@ -60,9 +63,9 @@
 
         /* ── Tabela ──────────────────────────────── */
         .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:24px;}
-        .table-scroll{overflow-x:auto;}
+        .table-scroll{overflow:auto;max-height:70vh;}
         table{width:100%;border-collapse:collapse;min-width:560px;}
-        thead th{background:var(--surface2);padding:10px 16px;text-align:left;font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);white-space:nowrap;}
+        thead th{position:sticky;top:0;z-index:1;background:var(--surface2);padding:10px 16px;text-align:left;font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);white-space:nowrap;box-shadow:0 1px 0 var(--border);}
         tbody tr{border-bottom:1px solid var(--border);transition:background .1s;}
         tbody tr:last-child{border-bottom:none;}
         tbody tr:hover{background:var(--surface2);}
@@ -81,7 +84,8 @@
 
         /* ── Ofício / admissão info ─────────────── */
         .info-strip{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px;}
-        .info-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;}
+        .info-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;transition:border-color .15s;}
+        .info-block:hover{border-color:var(--blue);}
         .info-block-label{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:8px;}
         .info-block-val{font-size:.92rem;font-weight:700;color:var(--text);}
         .info-block-sub{font-size:.72rem;color:var(--muted);margin-top:3px;}
@@ -109,8 +113,10 @@
         #toast{position:fixed;bottom:24px;right:24px;background:#1e3a5f;border:1px solid var(--blue);color:#bfdbfe;padding:12px 18px;border-radius:10px;font-size:.8rem;font-weight:600;display:none;z-index:9999;max-width:300px;box-shadow:0 8px 32px rgba(0,0,0,.4);}
 
         @media(max-width:640px){
+            body{padding:16px 12px;}
             .info-strip{grid-template-columns:1fr;}
             .stat-grid{grid-template-columns:1fr 1fr;}
+            .stat-grid>*:last-child{grid-column:1/-1;}
         }
     </style>
 </head>
@@ -120,8 +126,9 @@
 
     <!-- HEADER -->
     <div class="header">
-        <div>
+        <div class="header-info">
             <div class="header-title">Pensão Alimentícia — <span>Acompanhamento</span></div>
+            <div class="header-subtitle">Processo 1014868-19.2021.8.26.0005 · 3ª Vara da Família e Sucessões — TJSP</div>
             <div class="last-update" id="last-update">Conectando...</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
